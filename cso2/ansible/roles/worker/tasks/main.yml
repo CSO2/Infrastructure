@@ -1,0 +1,5 @@
+---
+- name: Join cluster
+  command: "{{ hostvars['K8S_TOKEN_HOLDER']['token'] }}"
+  args:
+    creates: /etc/kubernetes/kubelet.conf

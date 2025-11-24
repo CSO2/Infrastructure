@@ -1,0 +1,95 @@
+name: Deploy Infrastructure
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  terraform:
+    name: Terraform
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      control_plane_ip: ${{ steps.tf_output.outputs.control_plane_ip }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: cso2/terraform
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: cso2/terraform
+
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+        working-directory: cso2/terraform
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve tfplan
+        working-directory: cso2/terraform
+
+      - name: Get Terraform Outputs
+        id: tf_output
+        run: |
+          echo "control_plane_ip=$(terraform output -raw control_plane_public_ips | jq -r '.[0]')" >> $GITHUB_OUTPUT
+        working-directory: cso2/terraform
+
+  ansible:
+    name: Ansible
+    needs: terraform
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install Ansible
+        run: |
+          sudo apt update
+          sudo apt install -y ansible
+          pip install boto3 botocore
+
+      - name: Run Ansible Playbook
+        run: |
+          # Note: In a real scenario, you'd need to handle SSH keys securely.
+          # For this example, we assume the runner has access or we use SSM.
+          # Since SSM is complex to set up in GH Actions without extra tools,
+          # we'll assume SSH key is stored in secrets.
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          
+          ansible-playbook -i inventory/aws_ec2.yml site.yml
+        working-directory: cso2/ansible
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
