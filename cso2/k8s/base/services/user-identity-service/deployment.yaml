@@ -24,6 +24,16 @@ spec:
           value: "jdbc:postgresql://postgresql:5432/user_identity_db"
         - name: SPRING_DATASOURCE_USERNAME
           value: "postgres"
+        - name: JWT_PRIVATE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: JWT_PRIVATE_KEY
+        - name: JWT_PUBLIC_KEY
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: JWT_PUBLIC_KEY
         envFrom:
         - configMapRef:
             name: app-config

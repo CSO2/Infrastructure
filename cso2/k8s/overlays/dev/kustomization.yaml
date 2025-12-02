@@ -9,6 +9,7 @@ resources:
   - ../../base/infrastructure/redis
   - ../../base/infrastructure/kafka
   - ../../base/infrastructure/rabbitmq
+  - ../../base/istio-config
   - ../../base/services/content-service
   - ../../base/services/user-identity-service
   - ../../base/services/product-catalogue-service
@@ -17,6 +18,7 @@ resources:
   - ../../base/services/support-service
   - ../../base/services/notifications-service
   - ../../base/services/reporting-and-analysis-service
+  - istio
   - frontend.yaml
 
 configMapGenerator:

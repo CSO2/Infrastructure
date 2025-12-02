@@ -70,43 +70,53 @@ install_istio() {
   helm repo update
   
   # Install Istio base (CRDs)
-  echo "Installing Istio base components..."
+  echo "Installing Istio base components (CRDs)..."
   helm install istio-base istio/base \
     -n istio-system \
     --create-namespace \
-    --version 1.20.0 \
+    --set defaultRevision=default \
     --wait
   
+  # Validate CRD installation
+  echo "Validating CRD installation..."
+  helm ls -n istio-system
+  
   # Install Istiod (control plane)
-  echo "Installing Istiod..."
+  echo "Installing Istiod (Istio discovery service)..."
   helm install istiod istio/istiod \
     -n istio-system \
-    --version 1.20.0 \
     --set pilot.resources.requests.cpu=100m \
     --set pilot.resources.requests.memory=256Mi \
     --set pilot.resources.limits.cpu=500m \
     --set pilot.resources.limits.memory=512Mi \
     --wait
   
+  # Verify Istiod installation
+  echo "Verifying Istiod installation..."
+  helm status istiod -n istio-system
+  kubectl get deployments -n istio-system --output wide
+  
   # Install Istio Ingress Gateway
   echo "Installing Istio Ingress Gateway..."
+  kubectl create namespace istio-ingress --dry-run=client -o yaml | kubectl apply -f -
   helm install istio-ingressgateway istio/gateway \
-    -n istio-system \
-    --version 1.20.0 \
+    -n istio-ingress \
     --set resources.requests.cpu=100m \
     --set resources.requests.memory=128Mi \
     --set resources.limits.cpu=500m \
     --set resources.limits.memory=256Mi \
     --wait
   
-  # Create and label cso2-dev namespace
-  echo "Creating cso2-dev namespace with Istio injection..."
+  # Create and label cso2-dev namespace for automatic sidecar injection
+  echo "Creating cso2-dev namespace with Istio sidecar injection..."
   kubectl create namespace cso2-dev --dry-run=client -o yaml | kubectl apply -f -
   kubectl label namespace cso2-dev istio-injection=enabled --overwrite
   
   echo "✅ Istio installed successfully!"
-  echo "Verifying Istio installation..."
+  echo ""
+  echo "Istio components status:"
   kubectl get pods -n istio-system
+  kubectl get pods -n istio-ingress
 }
 
 # Deploy CSO2 application
@@ -117,11 +127,17 @@ deploy_cso2() {
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   K8S_DIR="$(dirname "$SCRIPT_DIR")/k8s"
   
-  # Check if secrets.env exists
-  if [ ! -f "$K8S_DIR/overlays/dev/secrets.env" ]; then
-    echo "⚠️  secrets.env not found. Creating from template..."
-    cp "$K8S_DIR/overlays/dev/secrets.env.example" "$K8S_DIR/overlays/dev/secrets.env"
-    echo "⚠️  Please edit $K8S_DIR/overlays/dev/secrets.env with your actual secrets"
+  # Check if .env exists
+  if [ ! -f "$K8S_DIR/overlays/dev/.env" ]; then
+    echo "⚠️  .env not found. Creating from .env.example..."
+    cp "$K8S_DIR/overlays/dev/.env.example" "$K8S_DIR/overlays/dev/.env"
+    echo "⚠️  Please edit $K8S_DIR/overlays/dev/.env with your actual secrets"
+    echo ""
+    echo "Generate JWT keys with:"
+    echo "  openssl genrsa -out private_key.pem 4096"
+    echo "  openssl rsa -in private_key.pem -pubout -out public_key.pem"
+    echo ""
+    read -p "Press Enter after updating .env file to continue..."
   fi
   
   # Apply Kustomize manifests
@@ -129,8 +145,12 @@ deploy_cso2() {
   kubectl apply -k "$K8S_DIR/overlays/dev"
   
   echo "✅ CSO2 application deployed!"
+  echo ""
   echo "Checking deployment status..."
   kubectl get pods -n cso2-dev
+  echo ""
+  kubectl get virtualservices -n cso2-dev
+  kubectl get gateway -n cso2-dev
 }
 
 # Show access information
@@ -146,12 +166,21 @@ show_access_info() {
   echo "  - View all pods:           kubectl get pods -n cso2-dev"
   echo "  - View services:           kubectl get svc -n cso2-dev"
   echo "  - View Istio components:   kubectl get pods -n istio-system"
-  echo "  - Access frontend:         minikube service frontend -n cso2-dev"
-  echo "  - View logs:               kubectl logs -n cso2-dev deployment/content-service"
+  echo "  - View Istio gateway:      kubectl get pods -n istio-ingress"
+  echo "  - View Istio routes:       kubectl get virtualservices -n cso2-dev"
+  echo "  - View logs:               kubectl logs -n cso2-dev deployment/<service-name>"
   echo "  - Minikube dashboard:      minikube dashboard"
   echo ""
   echo "To access the Istio ingress gateway:"
-  echo "  minikube tunnel"
+  echo "  1. Run in a separate terminal: minikube tunnel"
+  echo "  2. Get gateway IP: kubectl get svc -n istio-ingress"
+  echo "  3. Access API at: http://<GATEWAY-IP>/api/"
+  echo ""
+  echo "Example API calls:"
+  echo "  - Public endpoint:  curl http://<GATEWAY-IP>/api/products"
+  echo "  - Login:            curl -X POST http://<GATEWAY-IP>/api/auth/login \\"
+  echo "                        -H 'Content-Type: application/json' \\"
+  echo "                        -d '{\"email\":\"user@example.com\",\"password\":\"password\"}'"
   echo ""
 }
 
@@ -162,9 +191,9 @@ main() {
   echo "========================================="
   echo ""
   
-  install_prerequisites
-  start_minikube
-  verify_minikube
+  # install_prerequisites
+  # start_minikube
+  # verify_minikube
   install_istio
   deploy_cso2
   show_access_info

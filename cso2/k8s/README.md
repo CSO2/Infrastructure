@@ -5,16 +5,26 @@
 ```bash
 # 1. Copy secrets template
 cd overlays/dev
-cp secrets.env.example secrets.env
+cp .env.example .env
 
-# 2. Edit secrets.env with actual values
-vim secrets.env
+# 2. Generate JWT RSA keys (required for user-identity-service)
+openssl genrsa -out /tmp/jwt-private.pem 4096
+openssl rsa -in /tmp/jwt-private.pem -pubout -out /tmp/jwt-public.pem
 
-# 3. Deploy everything
+# 3. Update .env with JWT keys (replace newlines with \n)
+PRIVATE_KEY=$(cat /tmp/jwt-private.pem | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
+PUBLIC_KEY=$(cat /tmp/jwt-public.pem | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
+# Then manually edit .env or use sed to replace JWT_PRIVATE_KEY and JWT_PUBLIC_KEY
+
+# 4. Deploy everything
 kubectl apply -k overlays/dev
 
-# 4. Verify
+# 5. Verify
 kubectl get all -n cso2-dev
+
+# 6. Test JWKS endpoint (for Istio integration)
+kubectl port-forward -n cso2-dev svc/user-identity-service 8081:8081
+curl http://localhost:8081/.well-known/jwks.json
 ```
 
 ## Structure
@@ -32,11 +42,10 @@ k8s/
 └── overlays/
     └── dev/                # Development environment
         ├── kustomization.yaml
-        ├── secrets.env     # ❌ gitignored - actual secrets
-        ├── secrets.env.example  # ✅ committed - template
-        ├── content-service.yaml
-        ├── user-identity-service.yaml
-        └── ... (8 services + frontend)
+        ├── .env            # ❌ gitignored - actual secrets
+        ├── .env.example    # ✅ committed - template
+        ├── frontend.yaml
+        └── ... (services)
 ```
 
 ## Adding a New Service
@@ -124,8 +133,37 @@ kubectl apply -k overlays/staging
 - **Base** = Reusable infrastructure components
 - **Overlay** = Environment-specific configs (dev, staging, prod)
 - **ConfigMap** = Non-sensitive shared env vars
-- **Secrets** = Sensitive data (passwords, API keys) - NEVER commit `secrets.env`
+- **Secrets** = Sensitive data (passwords, API keys, JWT RSA keys) - NEVER commit `.env`
 - **envFrom** = Inject all ConfigMap/Secret values into pods
+
+## JWT Configuration (user-identity-service)
+
+The user-identity-service uses **RSA-4096 asymmetric signing** for JWTs to support Istio Gateway validation.
+
+### Key Requirements:
+- **Private Key** (`JWT_PRIVATE_KEY`): Used by the service to sign JWTs
+- **Public Key** (`JWT_PUBLIC_KEY`): Used by Istio to validate JWTs via JWKS endpoint
+- **JWKS Endpoint**: `GET /.well-known/jwks.json` (exposed by user-identity-service)
+
+### Production Deployment:
+For production environments, **DO NOT** hardcode keys in `.env` files. Instead:
+1. Generate keys using: `openssl genrsa -out jwt-private.pem 4096 && openssl rsa -in jwt-private.pem -pubout -out jwt-public.pem`
+2. Store keys in your secret manager (AWS Secrets Manager, GCP Secret Manager, HashiCorp Vault, etc.)
+3. Configure Kubernetes to inject secrets via External Secrets Operator or native CSI drivers
+4. Ensure keys are formatted in PEM with `\n` literals (not actual newlines) for env vars
+
+### JWKS Endpoint Integration:
+Configure Istio RequestAuthentication to validate JWTs:
+```yaml
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: jwt-auth
+spec:
+  jwtRules:
+  - issuer: "cso2-user-identity-service"
+    jwksUri: "http://user-identity-service.cso2-dev.svc.cluster.local:8081/.well-known/jwks.json"
+```
 
 ## Troubleshooting
 
