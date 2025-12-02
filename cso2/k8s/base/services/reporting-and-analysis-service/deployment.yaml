@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reporting-and-analysis-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reporting-and-analysis-service
+  template:
+    metadata:
+      labels:
+        app: reporting-and-analysis-service
+    spec:
+      containers:
+      - name: spring-boot
+        image: reporting-and-analysis-service:latest
+        ports:
+        - containerPort: 8088
+        env:
+        - name: SERVER_PORT
+          value: "8088"
+        - name: SPRING_DATASOURCE_URL
+          value: "jdbc:postgresql://postgresql:5432/reporting_analysis_db"
+        - name: SPRING_DATASOURCE_USERNAME
+          value: "postgres"
+        envFrom:
+        - configMapRef:
+            name: app-config
+        - secretRef:
+            name: app-secrets
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"

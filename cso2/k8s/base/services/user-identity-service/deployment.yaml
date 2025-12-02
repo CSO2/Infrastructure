@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-identity-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-identity-service
+  template:
+    metadata:
+      labels:
+        app: user-identity-service
+    spec:
+      containers:
+      - name: spring-boot
+        image: user-identity-service:latest
+        ports:
+        - containerPort: 8081
+        env:
+        - name: SERVER_PORT
+          value: "8081"
+        - name: SPRING_DATASOURCE_URL
+          value: "jdbc:postgresql://postgresql:5432/user_identity_db"
+        - name: SPRING_DATASOURCE_USERNAME
+          value: "postgres"
+        envFrom:
+        - configMapRef:
+            name: app-config
+        - secretRef:
+            name: app-secrets
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"

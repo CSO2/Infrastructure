@@ -1,0 +1,46 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: cso2-dev
+
+resources:
+  - ../../base/infrastructure/mongodb
+  - ../../base/infrastructure/postgresql
+  - ../../base/infrastructure/redis
+  - ../../base/infrastructure/kafka
+  - ../../base/infrastructure/rabbitmq
+  - ../../base/services/content-service
+  - ../../base/services/user-identity-service
+  - ../../base/services/product-catalogue-service
+  - ../../base/services/order-service
+  - ../../base/services/shoppingcart-wishlist-service
+  - ../../base/services/support-service
+  - ../../base/services/notifications-service
+  - ../../base/services/reporting-and-analysis-service
+  - frontend.yaml
+
+configMapGenerator:
+  - name: app-config
+    literals:
+      - MONGODB_HOST=mongodb
+      - POSTGRESQL_HOST=postgresql
+      - REDIS_HOST=redis
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+
+secretGenerator:
+  - name: app-secrets
+    envs:
+      - .env
+
+patches:
+  - target:
+      kind: Deployment
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: not-important
+      spec:
+        replicas: 1

@@ -1,0 +1,16 @@
+# Kubernetes secrets
+.env
+
+# IDE
+.idea/
+.vscode/
+
+# Terraform
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# Temp files
+*.swp
+*.bak
+*~

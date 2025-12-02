@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: frontend:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NEXT_PUBLIC_API_URL
+          value: "http://user-identity-service:8081"
+        - name: NEXT_PUBLIC_PRODUCT_SERVICE_URL
+          value: "http://product-catalogue-service:8082"
+        - name: NEXT_PUBLIC_ORDER_SERVICE_URL
+          value: "http://order-service:8083"
+        - name: NEXT_PUBLIC_CART_SERVICE_URL
+          value: "http://shoppingcart-wishlist-service:8084"
+        - name: NEXT_PUBLIC_SUPPORT_SERVICE_URL
+          value: "http://support-service:8085"
+        - name: NEXT_PUBLIC_CONTENT_SERVICE_URL
+          value: "http://content-service:8086"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "400m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+spec:
+  selector:
+    app: frontend
+  ports:
+  - port: 3000
+    targetPort: 3000
+  type: LoadBalancer

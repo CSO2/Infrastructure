@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shoppingcart-wishlist-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shoppingcart-wishlist-service
+  template:
+    metadata:
+      labels:
+        app: shoppingcart-wishlist-service
+    spec:
+      containers:
+      - name: spring-boot
+        image: shoppingcart-wishlist-service:latest
+        ports:
+        - containerPort: 8084
+        env:
+        - name: SERVER_PORT
+          value: "8084"
+        - name: SPRING_DATA_MONGODB_DATABASE
+          value: "shoppingcart_wishlist_db"
+        - name: SPRING_REDIS_PORT
+          value: "6379"
+        - name: PRODUCT_CATALOGUE_SERVICE_URL
+          value: "http://product-catalogue-service:8082"
+        envFrom:
+        - configMapRef:
+            name: app-config
+        - secretRef:
+            name: app-secrets
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"

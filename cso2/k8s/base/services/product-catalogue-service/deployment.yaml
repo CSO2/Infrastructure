@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-catalogue-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: product-catalogue-service
+  template:
+    metadata:
+      labels:
+        app: product-catalogue-service
+    spec:
+      containers:
+      - name: spring-boot
+        image: product-catalogue-service:latest
+        ports:
+        - containerPort: 8082
+        env:
+        - name: SERVER_PORT
+          value: "8082"
+        - name: SPRING_DATA_MONGODB_DATABASE
+          value: "product_catalogue_db"
+        envFrom:
+        - configMapRef:
+            name: app-config
+        - secretRef:
+            name: app-secrets
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-identity-service
+spec:
+  selector:
+    app: user-identity-service
+  ports:
+  - port: 8081
+    targetPort: 8081
