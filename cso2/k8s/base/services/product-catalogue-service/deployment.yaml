@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: spring-boot
-        image: product-catalogue-service:latest
+        image: cso2/product-catalogue-service:latest
         ports:
         - containerPort: 8082
         env:

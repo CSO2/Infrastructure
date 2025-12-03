@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: spring-boot
-        image: reporting-and-analysis-service:latest
+        image: cso2/reporting-and-analysis-service:latest
         ports:
         - containerPort: 8088
         env:

@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: spring-boot
-        image: order-service:latest
+        image: cso2/order-service:latest
         ports:
         - containerPort: 8083
         env:

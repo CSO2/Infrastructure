@@ -4,45 +4,76 @@ kind: Kustomization
 namespace: cso2-dev
 
 resources:
-  - ../../base/infrastructure/mongodb
-  - ../../base/infrastructure/postgresql
-  - ../../base/infrastructure/redis
-  - ../../base/infrastructure/kafka
-  - ../../base/infrastructure/rabbitmq
-  - ../../base/istio-config
-  - ../../base/services/content-service
-  - ../../base/services/user-identity-service
-  - ../../base/services/product-catalogue-service
-  - ../../base/services/order-service
-  - ../../base/services/shoppingcart-wishlist-service
-  - ../../base/services/support-service
-  - ../../base/services/notifications-service
-  - ../../base/services/reporting-and-analysis-service
-  - istio
-  - frontend.yaml
+- ../../base/infrastructure/mongodb
+- ../../base/infrastructure/postgresql
+- ../../base/infrastructure/redis
+- ../../base/infrastructure/kafka
+- ../../base/infrastructure/rabbitmq
+- ../../base/istio-config
+- ../../base/services/content-service
+- ../../base/services/user-identity-service
+- ../../base/services/product-catalogue-service
+- ../../base/services/order-service
+- ../../base/services/shoppingcart-wishlist-service
+- ../../base/services/support-service
+- ../../base/services/notifications-service
+- ../../base/services/reporting-and-analysis-service
+- istio
+- frontend.yaml
 
 configMapGenerator:
-  - name: app-config
-    literals:
-      - MONGODB_HOST=mongodb
-      - POSTGRESQL_HOST=postgresql
-      - REDIS_HOST=redis
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_PORT=5672
+- literals:
+  - MONGODB_HOST=mongodb
+  - POSTGRESQL_HOST=postgresql
+  - REDIS_HOST=redis
+  - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+  - RABBITMQ_HOST=rabbitmq
+  - RABBITMQ_PORT=5672
+  name: app-config
 
 secretGenerator:
-  - name: app-secrets
-    envs:
-      - .env
+- envs:
+  - .env
+  name: app-secrets
 
 patches:
-  - target:
-      kind: Deployment
-    patch: |-
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: not-important
-      spec:
-        replicas: 1
+- patch: |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: not-important
+    spec:
+      replicas: 1
+  target:
+    kind: Deployment
+images:
+- name: cso2/api-gateway
+  newName: cso2/api-gateway
+  newTag: dev-a351306
+- name: cso2/content-service
+  newName: cso2/content-service
+  newTag: dev-9ae6833
+- name: cso2/frontend
+  newName: cso2/frontend
+  newTag: dev-152e8f4
+- name: cso2/notifications-service
+  newName: cso2/notifications-service
+  newTag: dev-b592132
+- name: cso2/order-service
+  newName: cso2/order-service
+  newTag: dev-7dd4521
+- name: cso2/product-catalogue-service
+  newName: cso2/product-catalogue-service
+  newTag: dev-a775cfa
+- name: cso2/reporting-and-analysis-service
+  newName: cso2/reporting-and-analysis-service
+  newTag: dev-e0380d1
+- name: cso2/shoppingcart-wishlist-service
+  newName: cso2/shoppingcart-wishlist-service
+  newTag: dev-93a4c44
+- name: cso2/support-service
+  newName: cso2/support-service
+  newTag: dev-272fe06
+- name: cso2/user-identity-service
+  newName: cso2/user-identity-service
+  newTag: dev-ba71dcd

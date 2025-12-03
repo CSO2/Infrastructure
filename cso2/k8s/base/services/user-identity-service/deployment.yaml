@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: spring-boot
-        image: user-identity-service:latest
+        image: cso2/user-identity-service:latest
         ports:
         - containerPort: 8081
         env:

@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: spring-boot
-        image: shoppingcart-wishlist-service:latest
+        image: cso2/shoppingcart-wishlist-service:latest
         ports:
         - containerPort: 8084
         env:

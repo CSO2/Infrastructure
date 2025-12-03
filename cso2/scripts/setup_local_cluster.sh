@@ -41,6 +41,13 @@ install_prerequisites() {
     rm kubectl
   fi
 
+  # Install kustomize if not installed
+  if ! command_exists kustomize; then
+    echo "Installing kustomize..."
+    curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+    sudo mv kustomize /usr/local/bin/
+  fi
+
   # Install Helm if not installed
   if ! command_exists helm; then
     echo "Installing Helm..."
