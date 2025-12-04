@@ -17,16 +17,13 @@ spec:
         image: cso2/product-catalogue-service:latest
         ports:
         - containerPort: 8082
-        env:
-        - name: SERVER_PORT
-          value: "8082"
-        - name: SPRING_DATA_MONGODB_DATABASE
-          value: "product_catalogue_db"
         envFrom:
         - configMapRef:
             name: app-config
+        - configMapRef:
+            name: product-catalogue-service-config
         - secretRef:
-            name: app-secrets
+            name: product-catalogue-service-secrets
         resources:
           requests:
             memory: "512Mi"

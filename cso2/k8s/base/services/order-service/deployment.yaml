@@ -17,22 +17,13 @@ spec:
         image: cso2/order-service:latest
         ports:
         - containerPort: 8083
-        env:
-        - name: SERVER_PORT
-          value: "8083"
-        - name: SPRING_DATASOURCE_URL
-          value: "jdbc:postgresql://postgresql:5432/order_db"
-        - name: SPRING_DATASOURCE_USERNAME
-          value: "postgres"
-        - name: PRODUCT_CATALOGUE_SERVICE_URL
-          value: "http://product-catalogue-service:8082"
-        - name: USER_IDENTITY_SERVICE_URL
-          value: "http://user-identity-service:8081"
         envFrom:
         - configMapRef:
             name: app-config
+        - configMapRef:
+            name: order-service-config
         - secretRef:
-            name: app-secrets
+            name: order-service-secrets
         resources:
           requests:
             memory: "512Mi"

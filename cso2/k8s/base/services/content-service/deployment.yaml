@@ -17,16 +17,11 @@ spec:
         image: cso2/content-service:latest
         ports:
         - containerPort: 8086
-        env:
-        - name: SERVER_PORT
-          value: "8086"
-        - name: SPRING_DATA_MONGODB_DATABASE
-          value: "content_db"
         envFrom:
         - configMapRef:
             name: app-config
         - secretRef:
-            name: app-secrets
+            name: content-service-secrets
         resources:
           requests:
             memory: "512Mi"

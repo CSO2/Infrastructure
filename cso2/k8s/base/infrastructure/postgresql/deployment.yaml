@@ -18,16 +18,62 @@ spec:
         ports:
         - containerPort: 5432
           name: postgresql
-        envFrom:
-        - secretRef:
-            name: app-secrets
         env:
         - name: POSTGRES_USER
-          value: postgres
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-secrets
+              key: POSTGRES_USER
         - name: POSTGRES_PASSWORD
-          value: $(POSTGRESQL_PASSWORD)
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-secrets
+              key: POSTGRES_PASSWORD
         - name: POSTGRES_DB
-          value: postgres
+          valueFrom:
+            configMapKeyRef:
+              name: postgresql-config
+              key: POSTGRES_DB
+        - name: CSO2_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-secrets
+              key: CSO2_USER
+        - name: CSO2_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-secrets
+              key: CSO2_PASSWORD
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - /bin/bash
+              - -c
+              - |
+                set +e
+                until pg_isready -U postgres; do sleep 1; done
+                psql -U postgres -tc "SELECT 1 FROM pg_user WHERE usename = '$CSO2_USER'" | grep -q 1
+                if [ $? -ne 0 ]; then
+                  psql -U postgres -c "CREATE USER $CSO2_USER WITH PASSWORD '$CSO2_PASSWORD';"
+                fi
+                psql -U postgres -lqt | cut -d \| -f 1 | grep -qw cso2_order_service
+                if [ $? -ne 0 ]; then
+                  psql -U postgres -c "CREATE DATABASE cso2_order_service OWNER $CSO2_USER;"
+                fi
+                psql -U postgres -lqt | cut -d \| -f 1 | grep -qw cso2_user_identity
+                if [ $? -ne 0 ]; then
+                  psql -U postgres -c "CREATE DATABASE cso2_user_identity OWNER $CSO2_USER;"
+                fi
+                psql -U postgres -lqt | cut -d \| -f 1 | grep -qw cso2_support_service
+                if [ $? -ne 0 ]; then
+                  psql -U postgres -c "CREATE DATABASE cso2_support_service OWNER $CSO2_USER;"
+                fi
+                psql -U postgres -lqt | cut -d \| -f 1 | grep -qw cso2_reporting_service
+                if [ $? -ne 0 ]; then
+                  psql -U postgres -c "CREATE DATABASE cso2_reporting_service OWNER $CSO2_USER;"
+                fi
+                exit 0
         volumeMounts:
         - name: postgresql-data
           mountPath: /var/lib/postgresql/data

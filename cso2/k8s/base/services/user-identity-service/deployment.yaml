@@ -17,28 +17,11 @@ spec:
         image: cso2/user-identity-service:latest
         ports:
         - containerPort: 8081
-        env:
-        - name: SERVER_PORT
-          value: "8081"
-        - name: SPRING_DATASOURCE_URL
-          value: "jdbc:postgresql://postgresql:5432/user_identity_db"
-        - name: SPRING_DATASOURCE_USERNAME
-          value: "postgres"
-        - name: JWT_PRIVATE_KEY
-          valueFrom:
-            secretKeyRef:
-              name: app-secrets
-              key: JWT_PRIVATE_KEY
-        - name: JWT_PUBLIC_KEY
-          valueFrom:
-            secretKeyRef:
-              name: app-secrets
-              key: JWT_PUBLIC_KEY
         envFrom:
         - configMapRef:
-            name: app-config
+            name: user-identity-service-config
         - secretRef:
-            name: app-secrets
+            name: user-identity-service-secrets
         resources:
           requests:
             memory: "512Mi"
