@@ -11,6 +11,7 @@ spec:
     metadata:
       labels:
         app: mongodb
+        type: backend-infra
     spec:
       containers:
       - name: mongodb

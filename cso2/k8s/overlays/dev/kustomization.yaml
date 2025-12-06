@@ -29,7 +29,7 @@ configMapGenerator:
 - literals:
   - REDIS_HOST=redis
   - REDIS_PORT=6379
-  - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+  - KAFKA_BOOTSTRAP_SERVERS=kafka-broker:9092
   - RABBITMQ_HOST=rabbitmq
   - RABBITMQ_PORT=5672
   - DATABASE_USERNAME=cso2
@@ -70,7 +70,7 @@ configMapGenerator:
 - behavior: create
   literals:
   - SERVER_PORT=8087
-  - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+  - KAFKA_BOOTSTRAP_SERVERS=kafka-broker:9092
   - KAFKA_CONSUMER_GROUP_ID=notification-group
   - KAFKA_CONSUMER_AUTO_OFFSET_RESET=earliest
   - MAIL_HOST=smtp.gmail.com
@@ -119,14 +119,44 @@ secretGenerator:
 
 patches:
 - patch: |-
-    apiVersion: apps/v1
-    kind: Deployment
-    metadata:
-      name: not-important
-    spec:
-      replicas: 1
+    - op: replace
+      path: /spec/template/spec/containers/0/resources
+      value:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "256Mi"
+          cpu: "250m"
   target:
     kind: Deployment
+    labelSelector: "type=backend-service"
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/resources
+      value:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "256Mi"
+          cpu: "250m"
+  target:
+    kind: Deployment
+    labelSelector: "type=backend-infra"
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/resources
+      value:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "256Mi"
+          cpu: "250m"
+  target:
+    kind: Deployment
+    labelSelector: "type=frontend"
 images:
 - name: cso2/api-gateway
   newName: cso2/api-gateway

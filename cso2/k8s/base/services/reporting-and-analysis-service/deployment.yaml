@@ -11,6 +11,7 @@ spec:
     metadata:
       labels:
         app: reporting-and-analysis-service
+        type: backend-service
     spec:
       containers:
       - name: spring-boot

@@ -11,6 +11,7 @@ spec:
     metadata:
       labels:
         app: zookeeper
+        type: backend-infra
     spec:
       containers:
       - name: zookeeper

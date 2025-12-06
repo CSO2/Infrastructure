@@ -76,43 +76,10 @@ install_istio() {
   helm repo add istio https://istio-release.storage.googleapis.com/charts
   helm repo update
   
-  # Install Istio base (CRDs)
-  echo "Installing Istio base components (CRDs)..."
-  helm install istio-base istio/base \
-    -n istio-system \
-    --create-namespace \
-    --set defaultRevision=default \
-    --wait
-  
-  # Validate CRD installation
-  echo "Validating CRD installation..."
-  helm ls -n istio-system
-  
-  # Install Istiod (control plane)
-  echo "Installing Istiod (Istio discovery service)..."
-  helm install istiod istio/istiod \
-    -n istio-system \
-    --set pilot.resources.requests.cpu=100m \
-    --set pilot.resources.requests.memory=256Mi \
-    --set pilot.resources.limits.cpu=500m \
-    --set pilot.resources.limits.memory=512Mi \
-    --wait
-  
-  # Verify Istiod installation
-  echo "Verifying Istiod installation..."
-  helm status istiod -n istio-system
-  kubectl get deployments -n istio-system --output wide
-  
-  # Install Istio Ingress Gateway
-  echo "Installing Istio Ingress Gateway..."
-  kubectl create namespace istio-ingress --dry-run=client -o yaml | kubectl apply -f -
-  helm install istio-ingressgateway istio/gateway \
-    -n istio-ingress \
-    --set resources.requests.cpu=100m \
-    --set resources.requests.memory=128Mi \
-    --set resources.limits.cpu=500m \
-    --set resources.limits.memory=256Mi \
-    --wait
+  helm install istio-base istio/base -n istio-system --set defaultRevision=default --create-namespace
+  helm install istiod istio/istiod -n istio-system --wait
+  kubectl create namespace istio-ingress
+  helm install istio-ingress istio/gateway -n istio-ingress 
   
   # Create and label cso2-dev namespace for automatic sidecar injection
   echo "Creating cso2-dev namespace with Istio sidecar injection..."
@@ -147,6 +114,11 @@ deploy_cso2() {
     read -p "Press Enter after updating .env file to continue..."
   fi
   
+  # Ensure cso2-dev namespace exists (with Istio injection label)
+  echo "Ensuring cso2-dev namespace exists..."
+  kubectl create namespace cso2-dev --dry-run=client -o yaml | kubectl apply -f -
+  kubectl label namespace cso2-dev istio-injection=enabled --overwrite
+
   # Apply Kustomize manifests
   echo "Applying Kustomize manifests..."
   kubectl apply -k "$K8S_DIR/overlays/dev"
@@ -201,7 +173,7 @@ main() {
   # install_prerequisites
   # start_minikube
   # verify_minikube
-  install_istio
+  # install_istio
   deploy_cso2
   show_access_info
 }

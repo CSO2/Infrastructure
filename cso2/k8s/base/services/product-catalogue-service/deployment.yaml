@@ -11,6 +11,7 @@ spec:
     metadata:
       labels:
         app: product-catalogue-service
+        type: backend-service
     spec:
       containers:
       - name: spring-boot

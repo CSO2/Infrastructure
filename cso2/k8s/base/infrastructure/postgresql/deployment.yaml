@@ -11,6 +11,7 @@ spec:
     metadata:
       labels:
         app: postgresql
+        type: backend-infra
     spec:
       containers:
       - name: postgresql
