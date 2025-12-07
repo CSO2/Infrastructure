@@ -52,28 +52,26 @@ spec:
               - /bin/bash
               - -c
               - |
-                set +e
-                until pg_isready -U postgres; do sleep 1; done
-                psql -U postgres -tc "SELECT 1 FROM pg_user WHERE usename = '$CSO2_USER'" | grep -q 1
-                if [ $? -ne 0 ]; then
-                  psql -U postgres -c "CREATE USER $CSO2_USER WITH PASSWORD '$CSO2_PASSWORD';"
+                set -e
+
+                export PGPASSWORD="$POSTGRES_PASSWORD"
+
+                until pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do
+                  sleep 1
+                done
+
+                user_exists=$(psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT 1 FROM pg_roles WHERE rolname = '$CSO2_USER'")
+                if [ "$user_exists" != "1" ]; then
+                  psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "CREATE ROLE \"$CSO2_USER\" LOGIN PASSWORD '$CSO2_PASSWORD';"
                 fi
-                psql -U postgres -lqt | cut -d \| -f 1 | grep -qw cso2_order_service
-                if [ $? -ne 0 ]; then
-                  psql -U postgres -c "CREATE DATABASE cso2_order_service OWNER $CSO2_USER;"
-                fi
-                psql -U postgres -lqt | cut -d \| -f 1 | grep -qw cso2_user_identity
-                if [ $? -ne 0 ]; then
-                  psql -U postgres -c "CREATE DATABASE cso2_user_identity OWNER $CSO2_USER;"
-                fi
-                psql -U postgres -lqt | cut -d \| -f 1 | grep -qw cso2_support_service
-                if [ $? -ne 0 ]; then
-                  psql -U postgres -c "CREATE DATABASE cso2_support_service OWNER $CSO2_USER;"
-                fi
-                psql -U postgres -lqt | cut -d \| -f 1 | grep -qw cso2_reporting_service
-                if [ $? -ne 0 ]; then
-                  psql -U postgres -c "CREATE DATABASE cso2_reporting_service OWNER $CSO2_USER;"
-                fi
+
+                for db in cso2_order_service cso2_user_identity cso2_support_service cso2_reporting_service; do
+                  db_exists=$(psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT 1 FROM pg_database WHERE datname = '$db'")
+                  if [ "$db_exists" != "1" ]; then
+                    psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "CREATE DATABASE \"$db\" OWNER \"$CSO2_USER\";"
+                  fi
+                done
+
                 exit 0
         volumeMounts:
         - name: postgresql-data

@@ -7,7 +7,7 @@ set -euo pipefail
 
 # Script is in Infrastructure/cso2/scripts, go up to parent of Infrastructure
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INFRA_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+INFRA_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 cd "$INFRA_ROOT"
 
 OVERLAY_DIR="Infrastructure/cso2/k8s/overlays/dev"

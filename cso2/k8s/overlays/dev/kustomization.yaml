@@ -130,7 +130,7 @@ patches:
           cpu: "250m"
   target:
     kind: Deployment
-    labelSelector: "type=backend-service"
+    labelSelector: type=backend-service
 - patch: |-
     - op: replace
       path: /spec/template/spec/containers/0/resources
@@ -143,7 +143,7 @@ patches:
           cpu: "250m"
   target:
     kind: Deployment
-    labelSelector: "type=backend-infra"
+    labelSelector: type=backend-infra
 - patch: |-
     - op: replace
       path: /spec/template/spec/containers/0/resources
@@ -156,7 +156,7 @@ patches:
           cpu: "250m"
   target:
     kind: Deployment
-    labelSelector: "type=frontend"
+    labelSelector: type=frontend
 images:
 - name: cso2/api-gateway
   newName: cso2/api-gateway

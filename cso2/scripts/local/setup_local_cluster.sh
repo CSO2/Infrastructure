@@ -58,7 +58,7 @@ install_prerequisites() {
 # Start Minikube
 start_minikube() {
   echo "Starting Minikube..."
-  minikube start --driver=docker --cpus=4 --memory=8192
+  minikube start --driver=docker --cpus=12 --memory=7096
 }
 
 # Verify Minikube setup
@@ -99,7 +99,7 @@ deploy_cso2() {
   
   # Get the directory where the script is located
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  K8S_DIR="$(dirname "$SCRIPT_DIR")/k8s"
+  K8S_DIR="$SCRIPT_DIR/../../k8s"
   
   # Check if .env exists
   if [ ! -f "$K8S_DIR/overlays/dev/.env" ]; then
@@ -170,10 +170,10 @@ main() {
   echo "========================================="
   echo ""
   
-  # install_prerequisites
-  # start_minikube
-  # verify_minikube
-  # install_istio
+  install_prerequisites
+  start_minikube
+  verify_minikube
+  install_istio
   deploy_cso2
   show_access_info
 }
