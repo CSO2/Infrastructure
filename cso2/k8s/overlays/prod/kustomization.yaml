@@ -40,7 +40,7 @@ images:
   newTag: main-ae47511
 - name: cso2/reporting-and-analysis-service
   newName: ghcr.io/cso2/reporting_and_analysis_service
-  newTag: main-a2facbe
+  newTag: main-0265e27
 - name: cso2/shoppingcart-wishlist-service
   newName: ghcr.io/cso2/shoppingcart_wishlist_service
   newTag: main-8438112
