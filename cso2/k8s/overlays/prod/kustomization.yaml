@@ -22,7 +22,7 @@ resources:
 images:
 - name: cso2/ai-service
   newName: ghcr.io/cso2/ai_service
-  newTag: main-d6dbfff
+  newTag: main-c7fa651
 - name: cso2/content-service
   newName: ghcr.io/cso2/content_service
   newTag: main-570f7b8
