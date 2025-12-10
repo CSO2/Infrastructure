@@ -31,7 +31,7 @@ images:
   newTag: main-11f67da
 - name: cso2/notifications-service
   newName: ghcr.io/cso2/notifications_service
-  newTag: main-ad81d53
+  newTag: main-dd7903f
 - name: cso2/order-service
   newName: ghcr.io/cso2/order_service
   newTag: main-b8004ae
