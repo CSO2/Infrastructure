@@ -20,6 +20,9 @@ resources:
 - ../../base/services/reporting-and-analysis-service
 - istio
 images:
+- name: cso2/content-service
+  newName: ghcr.io/cso2/content_service
+  newTag: main-570f7b8
 - name: cso2/frontend
   newName: ghcr.io/cso2/frontend_web
   newTag: main-11f67da
