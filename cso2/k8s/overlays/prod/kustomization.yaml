@@ -34,7 +34,7 @@ images:
   newTag: main-ad81d53
 - name: cso2/order-service
   newName: ghcr.io/cso2/order_service
-  newTag: main-d7a0dbf
+  newTag: main-b8004ae
 - name: cso2/product-catalogue-service
   newName: ghcr.io/cso2/product_catalogue_service
   newTag: main-ae47511
