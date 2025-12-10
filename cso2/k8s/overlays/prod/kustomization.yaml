@@ -49,4 +49,4 @@ images:
   newTag: main-5a2374c
 - name: cso2/user-identity-service
   newName: ghcr.io/cso2/user_identity_service
-  newTag: main-ff54b77
+  newTag: main-d540e52
