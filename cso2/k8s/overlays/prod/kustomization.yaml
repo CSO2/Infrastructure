@@ -43,7 +43,7 @@ images:
   newTag: main-a2facbe
 - name: cso2/shoppingcart-wishlist-service
   newName: ghcr.io/cso2/shoppingcart_wishlist_service
-  newTag: main-3320efa
+  newTag: main-8438112
 - name: cso2/support-service
   newName: ghcr.io/cso2/support_service
   newTag: main-6f9c281
