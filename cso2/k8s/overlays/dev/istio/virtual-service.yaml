@@ -1,0 +1,351 @@
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: cso2-api
+  namespace: cso2-dev
+spec:
+  hosts:
+  - "*"
+  gateways:
+  - istio-ingress/cso2-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /api/auth
+    route:
+    - destination:
+        host: user-identity-service.cso2-dev.svc.cluster.local
+        port:
+          number: 8081
+    corsPolicy:
+      allowOrigins:
+      - regex: ".*"
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - "*"
+      allowCredentials: true
+      maxAge: "24h"
+  
+  - match:
+    - uri:
+        prefix: /api/users
+    route:
+    - destination:
+        host: user-identity-service.cso2-dev.svc.cluster.local
+        port:
+          number: 8081
+    # headers:
+    #   request:
+    #     set:
+    #       X-User-Subject: "%REQ(x-jwt-payload:sub)%"
+    #       X-User-Id: "%REQ(x-jwt-payload:sub)%"
+    #       X-User-Roles: "%REQ(x-jwt-payload:role)%"
+    corsPolicy:
+      allowOrigins:
+      - regex: ".*"
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - "*"
+      allowCredentials: true
+      maxAge: "24h"
+  
+  - match:
+    - uri:
+        prefix: /api/products
+    route:
+    - destination:
+        host: product-catalogue-service.cso2-dev.svc.cluster.local
+        port:
+          number: 8082
+    corsPolicy:
+      allowOrigins:
+      - regex: ".*"
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - "*"
+      allowCredentials: true
+      maxAge: "24h"
+  
+  - match:
+    - uri:
+        prefix: /api/orders
+    route:
+    - destination:
+        host: order-service.cso2-dev.svc.cluster.local
+        port:
+          number: 8083
+    # headers:
+    #   request:
+    #     set:
+    #       X-User-Subject: "%REQ(x-jwt-payload:sub)%"
+    #       X-User-Id: "%REQ(x-jwt-payload:sub)%"
+    #       X-User-Roles: "%REQ(x-jwt-payload:role)%"
+    corsPolicy:
+      allowOrigins:
+      - regex: ".*"
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - "*"
+      allowCredentials: true
+      maxAge: "24h"
+  
+  - match:
+    - uri:
+        prefix: /api/trade-in
+    route:
+    - destination:
+        host: order-service.cso2-dev.svc.cluster.local
+        port:
+          number: 8083
+    # headers:
+    #   request:
+    #     set:
+    #       X-User-Subject: "%REQ(x-jwt-payload:sub)%"
+    #       X-User-Id: "%REQ(x-jwt-payload:sub)%"
+    #       X-User-Roles: "%REQ(x-jwt-payload:role)%"
+    corsPolicy:
+      allowOrigins:
+      - regex: ".*"
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - "*"
+      allowCredentials: true
+      maxAge: "24h"
+  
+  - match:
+    - uri:
+        prefix: /api/cart
+    route:
+    - destination:
+        host: shoppingcart-wishlist-service.cso2-dev.svc.cluster.local
+        port:
+          number: 8084
+    # headers:
+    #   request:
+    #     set:
+    #       X-User-Subject: "%REQ(x-jwt-payload:sub)%"
+    #       X-User-Id: "%REQ(x-jwt-payload:sub)%"
+    #       X-User-Roles: "%REQ(x-jwt-payload:role)%"
+    corsPolicy:
+      allowOrigins:
+      - regex: ".*"
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - "*"
+      allowCredentials: true
+      maxAge: "24h"
+  
+  - match:
+    - uri:
+        prefix: /api/wishlist
+    route:
+    - destination:
+        host: shoppingcart-wishlist-service.cso2-dev.svc.cluster.local
+        port:
+          number: 8084
+    # headers:
+    #   request:
+    #     set:
+    #       X-User-Subject: "%REQ(x-jwt-payload:sub)%"
+    #       X-User-Id: "%REQ(x-jwt-payload:sub)%"
+    #       X-User-Roles: "%REQ(x-jwt-payload:role)%"
+    corsPolicy:
+      allowOrigins:
+      - regex: ".*"
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - "*"
+      allowCredentials: true
+      maxAge: "24h"
+  
+  - match:
+    - uri:
+        prefix: /api/support
+    route:
+    - destination:
+        host: support-service.cso2-dev.svc.cluster.local
+        port:
+          number: 8085
+    # headers:
+    #   request:
+    #     set:
+    #       X-User-Subject: "%REQ(x-jwt-payload:sub)%"
+    #       X-User-Id: "%REQ(x-jwt-payload:sub)%"
+    #       X-User-Roles: "%REQ(x-jwt-payload:role)%"
+    corsPolicy:
+      allowOrigins:
+      - regex: ".*"
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - "*"
+      allowCredentials: true
+      maxAge: "24h"
+  
+  - match:
+    - uri:
+        prefix: /api/warranty
+    route:
+    - destination:
+        host: support-service.cso2-dev.svc.cluster.local
+        port:
+          number: 8085
+    # headers:
+    #   request:
+    #     set:
+    #       X-User-Subject: "%REQ(x-jwt-payload:sub)%"
+    #       X-User-Id: "%REQ(x-jwt-payload:sub)%"
+    #       X-User-Roles: "%REQ(x-jwt-payload:role)%"
+    corsPolicy:
+      allowOrigins:
+      - regex: ".*"
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - "*"
+      allowCredentials: true
+      maxAge: "24h"
+  
+  - match:
+    - uri:
+        prefix: /api/content
+    route:
+    - destination:
+        host: content-service.cso2-dev.svc.cluster.local
+        port:
+          number: 8086
+    corsPolicy:
+      allowOrigins:
+      - regex: ".*"
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - "*"
+      allowCredentials: true
+      maxAge: "24h"
+  
+  - match:
+    - uri:
+        prefix: /api/notifications
+    route:
+    - destination:
+        host: notifications-service.cso2-dev.svc.cluster.local
+        port:
+          number: 8087
+    # headers:
+    #   request:
+    #     set:
+    #       X-User-Subject: "%REQ(x-jwt-payload:sub)%"
+    #       X-User-Id: "%REQ(x-jwt-payload:sub)%"
+    #       X-User-Roles: "%REQ(x-jwt-payload:role)%"
+    corsPolicy:
+      allowOrigins:
+      - regex: ".*"
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - "*"
+      allowCredentials: true
+      maxAge: "24h"
+  
+  - match:
+    - uri:
+        prefix: /api/analytics
+    route:
+    - destination:
+        host: reporting-and-analysis-service.cso2-dev.svc.cluster.local
+        port:
+          number: 8088
+    # headers:
+    #   request:
+    #     set:
+    #       X-User-Subject: "%REQ(x-jwt-payload:sub)%"
+    #       X-User-Id: "%REQ(x-jwt-payload:sub)%"
+    #       X-User-Roles: "%REQ(x-jwt-payload:role)%"
+    corsPolicy:
+      allowOrigins:
+      - regex: ".*"
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - "*"
+      allowCredentials: true
+      maxAge: "24h"
+
+  # Frontend route - placed last so more specific /api/* routes are matched first
+  - match:
+    - uri:
+        prefix: /
+    route:
+    - destination:
+        host: frontend.cso2-dev.svc.cluster.local
+        port:
+          number: 3000
+    corsPolicy:
+      allowOrigins:
+      - regex: ".*"
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - "*"
+      allowCredentials: true
+      maxAge: "24h"

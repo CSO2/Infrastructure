@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reporting-and-analysis-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reporting-and-analysis-service
+  template:
+    metadata:
+      labels:
+        app: reporting-and-analysis-service
+        type: backend-service
+    spec:
+      containers:
+      - name: spring-boot
+        image: cso2/reporting-and-analysis-service:latest
+        ports:
+        - containerPort: 8088
+        envFrom:
+        - configMapRef:
+            name: app-config
+        - configMapRef:
+            name: reporting-and-analysis-service-config
+        - secretRef:
+            name: reporting-and-analysis-service-secrets
+        # resources:
+        #   requests:
+        #     memory: "512Mi"
+        #     cpu: "250m"
+        #   limits:
+        #     memory: "1Gi"
+        #     cpu: "500m"

@@ -1,0 +1,227 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- ../../base/infrastructure/mongodb
+- ../../base/infrastructure/postgresql
+- ../../base/infrastructure/redis
+- ../../base/infrastructure/kafka
+- ../../base/infrastructure/rabbitmq
+- ../../base/istio-config
+- ../../base/frontend
+- ../../base/services/content-service
+- ../../base/services/user-identity-service
+- ../../base/services/product-catalogue-service
+- ../../base/services/order-service
+- ../../base/services/shoppingcart-wishlist-service
+- ../../base/services/support-service
+- ../../base/services/notifications-service
+- ../../base/services/reporting-and-analysis-service
+- istio
+
+configMapGenerator:
+- behavior: create
+  literals:
+  - POSTGRES_DB=postgres
+  name: postgresql-config
+- literals:
+  - REDIS_HOST=redis
+  - REDIS_PORT=6379
+  - KAFKA_BOOTSTRAP_SERVERS=kafka-broker:9092
+  - RABBITMQ_HOST=rabbitmq
+  - RABBITMQ_PORT=5672
+  - DATABASE_USERNAME=cso2
+  name: app-config
+- literals:
+  - SERVER_PORT=8081
+  - DATABASE_URL=jdbc:postgresql://postgresql:5432/cso2_user_identity
+  - DATABASE_USERNAME=cso2
+  - JWT_EXPIRATION="86400000"
+  - JWT_REFRESH_EXPIRATION="604800000"
+  name: user-identity-service-config
+- literals:
+  - SERVER_PORT=8082
+  name: product-catalogue-service-config
+- literals:
+  - SERVER_PORT=8083
+  - DATABASE_URL=jdbc:postgresql://postgresql:5432/cso2_order_service
+  - JPA_SHOW_SQL=false
+  - CATALOG_SERVICE_URL=http://product-catalogue-service:8082
+  - CART_SERVICE_URL=http://shoppingcart-wishlist-service:8084
+  name: order-service-config
+- literals:
+  - SERVER_PORT=8084
+  - REDIS_HOST=redis
+  - REDIS_PORT=6379
+  - CATALOG_SERVICE_URL=http://product-catalogue-service:8082
+  name: shoppingcart-wishlist-service-config
+- literals:
+  - SERVER_PORT=8085
+  - DATABASE_URL=jdbc:postgresql://postgresql:5432/cso2_support_service
+  - ORDER_SERVICE_URL=http://order-service:8083
+  name: support-service-config
+- behavior: create
+  literals:
+  - SERVER_PORT=8086
+  - MONGODB_DATABASE=CSO2_content_service
+  name: content-service-config
+- behavior: create
+  literals:
+  - SERVER_PORT=8087
+  - KAFKA_BOOTSTRAP_SERVERS=kafka-broker:9092
+  - KAFKA_CONSUMER_GROUP_ID=notification-group
+  - KAFKA_CONSUMER_AUTO_OFFSET_RESET=earliest
+  - MAIL_HOST=smtp.gmail.com
+  - MAIL_PORT=587
+  name: notifications-service-config
+- behavior: create
+  literals:
+  - SERVER_PORT=8088
+  - DATABASE_URL=jdbc:postgresql://postgresql:5432/cso2_reporting_service
+  name: reporting-and-analysis-service-config
+
+secretGenerator:
+- envs:
+  - .env.redis
+  name: redis-secrets
+- envs:
+  - .env.postgresql
+  name: postgresql-secrets
+- envs:
+  - .env.mongodb
+  name: mongodb-secrets
+- envs:
+  - .env.user-identity-service
+  name: user-identity-service-secrets
+- envs:
+  - .env.product-catalogue-service
+  name: product-catalogue-service-secrets
+- envs:
+  - .env.order-service
+  name: order-service-secrets
+- envs:
+  - .env.shoppingcart-wishlist-service
+  name: shoppingcart-wishlist-service-secrets
+- envs:
+  - .env.support-service
+  name: support-service-secrets
+- envs:
+  - .env.content-service
+  name: content-service-secrets
+- envs:
+  - .env.notifications-service
+  name: notifications-service-secrets
+- envs:
+  - .env.reporting-and-analysis-service
+  name: reporting-and-analysis-service-secrets
+
+patches:
+- patch: |-
+    - op: add
+      path: /metadata/namespace
+      value: cso2-dev
+  target:
+    kind: Deployment
+- patch: |-
+    - op: add
+      path: /metadata/namespace
+      value: cso2-dev
+  target:
+    kind: Service
+- patch: |-
+    - op: add
+      path: /metadata/namespace
+      value: cso2-dev
+  target:
+    kind: ConfigMap
+- patch: |-
+    - op: add
+      path: /metadata/namespace
+      value: cso2-dev
+  target:
+    kind: Secret
+- patch: |-
+    - op: add
+      path: /metadata/namespace
+      value: cso2-dev
+  target:
+    kind: PersistentVolumeClaim
+- patch: |-
+    apiVersion: networking.istio.io/v1beta1
+    kind: Gateway
+    metadata:
+      name: cso2-gateway
+      namespace: istio-ingress
+  target:
+    kind: Gateway
+    name: cso2-gateway
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/resources
+      value:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "256Mi"
+          cpu: "250m"
+  target:
+    kind: Deployment
+    labelSelector: type=backend-service
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/resources
+      value:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "256Mi"
+          cpu: "250m"
+  target:
+    kind: Deployment
+    labelSelector: type=backend-infra
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/resources
+      value:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "256Mi"
+          cpu: "250m"
+  target:
+    kind: Deployment
+    labelSelector: type=frontend
+images:
+- name: cso2/api-gateway
+  newName: cso2/api-gateway
+  newTag: dev-a351306
+- name: cso2/content-service
+  newName: cso2/content-service
+  newTag: dev-cb7c8d0
+- name: cso2/frontend
+  newName: cso2/frontend
+  newTag: dev-152e8f4
+- name: cso2/notifications-service
+  newName: cso2/notifications-service
+  newTag: dev-75acc90
+- name: cso2/order-service
+  newName: cso2/order-service
+  newTag: dev-c39ca1e
+- name: cso2/product-catalogue-service
+  newName: cso2/product-catalogue-service
+  newTag: dev-2c4e7ec
+- name: cso2/reporting-and-analysis-service
+  newName: cso2/reporting-and-analysis-service
+  newTag: dev-abd2180
+- name: cso2/shoppingcart-wishlist-service
+  newName: cso2/shoppingcart-wishlist-service
+  newTag: dev-065b8e6
+- name: cso2/support-service
+  newName: cso2/support-service
+  newTag: dev-3e2b8bf
+- name: cso2/user-identity-service
+  newName: cso2/user-identity-service
+  newTag: dev-ba71dcd

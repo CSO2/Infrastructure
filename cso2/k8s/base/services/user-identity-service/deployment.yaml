@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-identity-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-identity-service
+  template:
+    metadata:
+      labels:
+        app: user-identity-service
+        type: backend-service
+    spec:
+      containers:
+      - name: spring-boot
+        image: cso2/user-identity-service:latest
+        ports:
+        - containerPort: 8081
+        envFrom:
+        - configMapRef:
+            name: user-identity-service-config
+        - secretRef:
+            name: user-identity-service-secrets
+        # resources:
+        #   requests:
+        #     memory: "512Mi"
+        #     cpu: "250m"
+        #   limits:
+        #     memory: "1Gi"
+        #     cpu: "500m"

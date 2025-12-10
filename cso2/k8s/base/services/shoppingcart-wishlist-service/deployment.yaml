@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shoppingcart-wishlist-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shoppingcart-wishlist-service
+  template:
+    metadata:
+      labels:
+        app: shoppingcart-wishlist-service
+        type: backend-service
+    spec:
+      containers:
+      - name: spring-boot
+        image: cso2/shoppingcart-wishlist-service:latest
+        ports:
+        - containerPort: 8084
+        envFrom:
+        - configMapRef:
+            name: app-config
+        - secretRef:
+            name: shoppingcart-wishlist-service-secrets
+        # resources:
+        #   requests:
+        #     memory: "512Mi"
+        #     cpu: "250m"
+        #   limits:
+        #     memory: "1Gi"
+        #     cpu: "500m"

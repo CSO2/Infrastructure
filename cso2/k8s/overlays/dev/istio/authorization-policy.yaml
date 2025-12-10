@@ -1,0 +1,46 @@
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: cso2-auth-policy
+  namespace: istio-ingress
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  action: CUSTOM
+  provider:
+    name: "jwt-auth"
+  rules:
+  - to:
+    - operation:
+        paths:
+        - /api/auth*
+        - /api/products*
+        - /api/content*
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: cso2-require-jwt
+  namespace: istio-ingress
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  action: DENY
+  rules:
+  - from:
+    - source:
+        notRequestPrincipals: ["*"]
+    to:
+    - operation:
+        paths:
+        - /api/users*
+        - /api/orders*
+        - /api/trade-in*
+        - /api/cart*
+        - /api/wishlist*
+        - /api/support*
+        - /api/warranty*
+        - /api/notifications*
+        - /api/analytics*

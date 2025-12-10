@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notifications-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notifications-service
+  template:
+    metadata:
+      labels:
+        app: notifications-service
+        type: backend-service
+    spec:
+      containers:
+      - name: spring-boot
+        image: cso2/notifications-service:latest
+        ports:
+        - containerPort: 8087
+        envFrom:
+        - configMapRef:
+            name: app-config
+        - secretRef:
+            name: notifications-service-secrets
+        # resources:
+        #   requests:
+        #     memory: "512Mi"
+        #     cpu: "250m"
+        #   limits:
+        #     memory: "1Gi"
+        #     cpu: "500m"

@@ -1,0 +1,16 @@
+apiVersion: security.istio.io/v1
+kind: RequestAuthentication
+metadata:
+  name: jwt-auth
+  namespace: istio-system
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  jwtRules:
+  - issuer: "cso2-auth"
+    jwksUri: "http://user-identity-service.cso2-dev.svc.cluster.local:8081/.well-known/jwks.json"
+    audiences:
+    - "cso2-api"
+    outputPayloadToHeader: "x-jwt-payload"
+    forwardOriginalToken: true
