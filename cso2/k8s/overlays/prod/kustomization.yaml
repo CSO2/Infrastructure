@@ -26,6 +26,9 @@ images:
 - name: cso2/frontend
   newName: ghcr.io/cso2/frontend_web
   newTag: main-11f67da
+- name: cso2/order-service
+  newName: ghcr.io/cso2/order_service
+  newTag: main-d7a0dbf
 - name: cso2/reporting-and-analysis-service
   newName: ghcr.io/cso2/reporting_and_analysis_service
   newTag: main-a2facbe
