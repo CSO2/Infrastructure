@@ -19,3 +19,7 @@ resources:
 - ../../base/services/notifications-service
 - ../../base/services/reporting-and-analysis-service
 - istio
+images:
+- name: cso2/frontend
+  newName: ghcr.io/cso2/frontend_web
+  newTag: main-11f67da
