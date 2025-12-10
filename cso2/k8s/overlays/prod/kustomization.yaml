@@ -25,7 +25,7 @@ images:
   newTag: main-c7fa651
 - name: cso2/content-service
   newName: ghcr.io/cso2/content_service
-  newTag: main-570f7b8
+  newTag: main-60f0d72
 - name: cso2/frontend
   newName: ghcr.io/cso2/frontend_web
   newTag: main-11f67da
