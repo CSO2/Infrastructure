@@ -3,4 +3,4 @@ kind: Kustomization
 
 resources:
 - gateway.yaml
-- request-authentication.yaml
+# - request-authentication.yaml

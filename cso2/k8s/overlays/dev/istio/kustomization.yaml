@@ -3,4 +3,4 @@ kind: Kustomization
 
 resources:
 - virtual-service.yaml
-- authorization-policy.yaml
+# - authorization-policy.yaml

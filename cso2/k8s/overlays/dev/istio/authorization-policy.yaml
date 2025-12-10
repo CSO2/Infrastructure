@@ -1,8 +1,8 @@
-apiVersion: security.istio.io/v1beta1
+apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
   name: cso2-auth-policy
-  namespace: istio-system
+  namespace: istio-ingress
 spec:
   selector:
     matchLabels:
@@ -22,7 +22,7 @@ apiVersion: security.istio.io/v1beta1
 kind: AuthorizationPolicy
 metadata:
   name: cso2-require-jwt
-  namespace: istio-system
+  namespace: istio-ingress
 spec:
   selector:
     matchLabels:

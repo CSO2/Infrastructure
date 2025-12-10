@@ -1,8 +1,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: cso2-dev
-
 resources:
 - ../../base/infrastructure/mongodb
 - ../../base/infrastructure/postgresql
@@ -119,6 +117,45 @@ secretGenerator:
 
 patches:
 - patch: |-
+    - op: add
+      path: /metadata/namespace
+      value: cso2-dev
+  target:
+    kind: Deployment
+- patch: |-
+    - op: add
+      path: /metadata/namespace
+      value: cso2-dev
+  target:
+    kind: Service
+- patch: |-
+    - op: add
+      path: /metadata/namespace
+      value: cso2-dev
+  target:
+    kind: ConfigMap
+- patch: |-
+    - op: add
+      path: /metadata/namespace
+      value: cso2-dev
+  target:
+    kind: Secret
+- patch: |-
+    - op: add
+      path: /metadata/namespace
+      value: cso2-dev
+  target:
+    kind: PersistentVolumeClaim
+- patch: |-
+    apiVersion: networking.istio.io/v1beta1
+    kind: Gateway
+    metadata:
+      name: cso2-gateway
+      namespace: istio-ingress
+  target:
+    kind: Gateway
+    name: cso2-gateway
+- patch: |-
     - op: replace
       path: /spec/template/spec/containers/0/resources
       value:
@@ -184,7 +221,7 @@ images:
   newTag: dev-065b8e6
 - name: cso2/support-service
   newName: cso2/support-service
-  newTag: dev-d3478ef
+  newTag: dev-3e2b8bf
 - name: cso2/user-identity-service
   newName: cso2/user-identity-service
   newTag: dev-ba71dcd
