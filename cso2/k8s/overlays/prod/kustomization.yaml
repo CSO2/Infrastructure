@@ -18,4 +18,5 @@ resources:
 - ../../base/services/support-service
 - ../../base/services/notifications-service
 - ../../base/services/reporting-and-analysis-service
+- ../../base/services/ai-service
 - istio
