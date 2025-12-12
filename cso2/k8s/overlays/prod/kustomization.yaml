@@ -28,7 +28,7 @@ images:
   newTag: main-60f0d72
 - name: cso2/frontend
   newName: ghcr.io/cso2/frontend_web
-  newTag: main-4d584ce
+  newTag: main-3af9bdd
 - name: cso2/notifications-service
   newName: ghcr.io/cso2/notifications_service
   newTag: main-dd7903f
