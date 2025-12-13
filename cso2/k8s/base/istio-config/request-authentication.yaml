@@ -2,15 +2,17 @@ apiVersion: security.istio.io/v1
 kind: RequestAuthentication
 metadata:
   name: jwt-auth
-  namespace: istio-system
+  namespace: istio-ingress
 spec:
   selector:
     matchLabels:
-      istio: ingressgateway
+      istio: ingress
   jwtRules:
   - issuer: "cso2-auth"
-    jwksUri: "http://user-identity-service.cso2-dev.svc.cluster.local:8081/.well-known/jwks.json"
     audiences:
     - "cso2-api"
+    # dummy key that need to be fetched
+    jwks: >-
+      {"keys":[{"kty":"RSA","kid":"cso2-jwt-key","alg":"RS256","use":"sig","n":"mb-_hgQKmYDVMWiyhbM1FSNszrRnRe4sr6PVf5R8ihHZIcLMoL2en5yCDq7MVoxXwsKZZ_bzZqQV-LUWC8EXo2vfvqQkSpLf6LVoY1JcP1o5Rw8HT7fqGdec49fFxKDbyfQtuXQocsj9ZrMuIq3baJ9R2iIn2QbiqnCa3hP_zhzYGiOKGjA864KBYuQNM0Jo_W2AncNRJX9SCGc42ryMhwCA5SUGhGCzUaLhoImAu_lqEeR5qWsfuM0LoWV9PZiJbg0649_3n6J_WWMi8QUbeLelcTSCwlTL_vTrmHZlxc-yZmcs7pUnuVOeHqik7uNTyl1OBpR0LMC2GptX6er1Jk0Fodumpuu-Tdvx_pGCZTnqupUTFuKMgH7wwtTyA0m39b3N2dQ90KsIUX7OHWJaNyLcNOUDyqp_rUOz6VDgbhf9cej1jkNFmdZoWWPs3BBAeZPyxPMNslr9vxySiRQdqldbqHIspS3kt_v07w4p4qfCfpqH8U-7qB8MYjOb-_6Pwlohy_aT-BJH2f4IU0s0SqrJrGwctaDG7dI9N6beNIDfeVpcI7-DK6Kt1ZEWXKhlVljQdLJBlQNG4H2Hp5O3bGFAmDyRChtRU2v0m1Wp98RPP7E0XazRdE8AzPk75CzCBfdpD4TXYZxRqSyS0s72vKBqjAvlEdAWbBz0VfHClpc","e":"AQAB"}]}
     outputPayloadToHeader: "x-jwt-payload"
     forwardOriginalToken: true

@@ -13,6 +13,7 @@ spec:
         app: shoppingcart-wishlist-service
         type: backend-service
     spec:
+      serviceAccountName: shoppingcart-wishlist-service-sa
       containers:
       - name: spring-boot
         image: cso2/shoppingcart-wishlist-service:latest

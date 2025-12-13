@@ -13,6 +13,7 @@ spec:
         app: ai-service
         type: backend-service
     spec:
+      serviceAccountName: ai-service-sa
       containers:
       - name: python-app
         image: cso2/ai-service:latest

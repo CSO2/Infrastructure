@@ -1,0 +1,70 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: jwt-claim-headers
+  namespace: istio-ingress
+spec:
+  workloadSelector:
+    labels:
+      istio: ingress
+  configPatches:
+  - applyTo: HTTP_FILTER
+    match:
+      context: GATEWAY
+      listener:
+        filterChain:
+          filter:
+            name: envoy.filters.network.http_connection_manager
+            subFilter:
+              name: envoy.filters.http.router
+    patch:
+      operation: INSERT_BEFORE
+      value:
+        name: envoy.filters.http.lua
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua
+          inlineCode: |
+            local function json_get_string(payload, key)
+              -- matches: "key":"value"
+              local pattern = '"' .. key .. '"%s*:%s*"(.-)"'
+              return payload:match(pattern)
+            end
+
+            local function json_get_array(payload, key)
+              -- matches: "key":[ ... ]
+              local pattern = '"' .. key .. '"%s*:%s*%[(.-)%]'
+              return payload:match(pattern)
+            end
+
+            local function parse_roles(payload)
+              -- roles can be ["a","b"] or "a"
+              local arr = json_get_array(payload, "roles") or json_get_array(payload, "role")
+              if arr ~= nil then
+                local out = {}
+                for v in arr:gmatch('"([^"]+)"') do
+                  table.insert(out, v)
+                end
+                if #out > 0 then
+                  return table.concat(out, ",")
+                end
+              end
+              return json_get_string(payload, "roles") or json_get_string(payload, "role")
+            end
+
+            function envoy_on_request(handle)
+              local payload = handle:headers():get("x-jwt-payload")
+              if payload == nil or payload == "" then
+                return
+              end
+
+              local sub = json_get_string(payload, "sub")
+              if sub ~= nil then
+                handle:headers():replace("x-user-subject", sub)
+                handle:headers():replace("x-user-id", sub)
+              end
+
+              local roles = parse_roles(payload)
+              if roles ~= nil then
+                handle:headers():replace("x-user-roles", roles)
+              end
+            end

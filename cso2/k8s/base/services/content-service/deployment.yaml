@@ -13,6 +13,7 @@ spec:
         app: content-service
         type: backend-service
     spec:
+      serviceAccountName: content-service-sa
       containers:
       - name: spring-boot
         image: cso2/content-service:latest

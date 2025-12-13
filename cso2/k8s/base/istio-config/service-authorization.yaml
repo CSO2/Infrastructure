@@ -1,0 +1,172 @@
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: user-identity-service-access
+  namespace: cso2-dev
+spec:
+  selector:
+    matchLabels:
+      app: user-identity-service
+  rules:
+  - from:
+    - source:
+        principals:
+        - "cluster.local/ns/istio-ingress/sa/istio-ingress"
+        - "cluster.local/ns/istio-ingress/sa/istio-ingressgateway-service-account"
+        - "cluster.local/ns/cso2-dev/sa/frontend-sa"
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: product-catalogue-service-access
+  namespace: cso2-dev
+spec:
+  selector:
+    matchLabels:
+      app: product-catalogue-service
+  rules:
+  - from:
+    - source:
+        principals:
+        - "cluster.local/ns/istio-ingress/sa/istio-ingress"
+        - "cluster.local/ns/istio-ingress/sa/istio-ingressgateway-service-account"
+        - "cluster.local/ns/cso2-dev/sa/frontend-sa"
+        - "cluster.local/ns/cso2-dev/sa/order-service-sa"
+        - "cluster.local/ns/cso2-dev/sa/shoppingcart-wishlist-service-sa"
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: order-service-access
+  namespace: cso2-dev
+spec:
+  selector:
+    matchLabels:
+      app: order-service
+  rules:
+  - from:
+    - source:
+        principals:
+        - "cluster.local/ns/istio-ingress/sa/istio-ingress"
+        - "cluster.local/ns/istio-ingress/sa/istio-ingressgateway-service-account"
+        - "cluster.local/ns/cso2-dev/sa/frontend-sa"
+        - "cluster.local/ns/cso2-dev/sa/support-service-sa"
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: shoppingcart-wishlist-service-access
+  namespace: cso2-dev
+spec:
+  selector:
+    matchLabels:
+      app: shoppingcart-wishlist-service
+  rules:
+  - from:
+    - source:
+        principals:
+        - "cluster.local/ns/istio-ingress/sa/istio-ingress"
+        - "cluster.local/ns/istio-ingress/sa/istio-ingressgateway-service-account"
+        - "cluster.local/ns/cso2-dev/sa/frontend-sa"
+        - "cluster.local/ns/cso2-dev/sa/order-service-sa"
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: support-service-access
+  namespace: cso2-dev
+spec:
+  selector:
+    matchLabels:
+      app: support-service
+  rules:
+  - from:
+    - source:
+        principals:
+        - "cluster.local/ns/istio-ingress/sa/istio-ingress"
+        - "cluster.local/ns/istio-ingress/sa/istio-ingressgateway-service-account"
+        - "cluster.local/ns/cso2-dev/sa/frontend-sa"
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: content-service-access
+  namespace: cso2-dev
+spec:
+  selector:
+    matchLabels:
+      app: content-service
+  rules:
+  - from:
+    - source:
+        principals:
+        - "cluster.local/ns/istio-ingress/sa/istio-ingress"
+        - "cluster.local/ns/istio-ingress/sa/istio-ingressgateway-service-account"
+        - "cluster.local/ns/cso2-dev/sa/frontend-sa"
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: notifications-service-access
+  namespace: cso2-dev
+spec:
+  selector:
+    matchLabels:
+      app: notifications-service
+  rules:
+  - from:
+    - source:
+        principals:
+        - "cluster.local/ns/istio-ingress/sa/istio-ingress"
+        - "cluster.local/ns/istio-ingress/sa/istio-ingressgateway-service-account"
+        - "cluster.local/ns/cso2-dev/sa/frontend-sa"
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: reporting-and-analysis-service-access
+  namespace: cso2-dev
+spec:
+  selector:
+    matchLabels:
+      app: reporting-and-analysis-service
+  rules:
+  - from:
+    - source:
+        principals:
+        - "cluster.local/ns/istio-ingress/sa/istio-ingress"
+        - "cluster.local/ns/istio-ingress/sa/istio-ingressgateway-service-account"
+        - "cluster.local/ns/cso2-dev/sa/frontend-sa"
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: ai-service-access
+  namespace: cso2-dev
+spec:
+  selector:
+    matchLabels:
+      app: ai-service
+  rules:
+  - from:
+    - source:
+        principals:
+        - "cluster.local/ns/istio-ingress/sa/istio-ingress"
+        - "cluster.local/ns/istio-ingress/sa/istio-ingressgateway-service-account"
+        - "cluster.local/ns/cso2-dev/sa/frontend-sa"
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: frontend-access
+  namespace: cso2-dev
+spec:
+  selector:
+    matchLabels:
+      app: frontend
+  rules:
+  - from:
+    - source:
+        principals:
+        - "cluster.local/ns/istio-ingress/sa/istio-ingress"
+        - "cluster.local/ns/istio-ingress/sa/istio-ingressgateway-service-account"

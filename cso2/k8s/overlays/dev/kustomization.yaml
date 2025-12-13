@@ -148,6 +148,12 @@ patches:
   target:
     kind: PersistentVolumeClaim
 - patch: |-
+    - op: add
+      path: /metadata/namespace
+      value: cso2-dev
+  target:
+    kind: ServiceAccount
+- patch: |-
     apiVersion: networking.istio.io/v1beta1
     kind: Gateway
     metadata:

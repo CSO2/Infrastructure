@@ -13,6 +13,7 @@ spec:
         app: order-service
         type: backend-service
     spec:
+      serviceAccountName: order-service-sa
       containers:
       - name: spring-boot
         image: cso2/order-service:latest
