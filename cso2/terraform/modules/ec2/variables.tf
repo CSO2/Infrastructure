@@ -1,12 +1,13 @@
 variable "project_name" {
   description = "Name of the project"
   type        = string
+  default     = "cso2-ecommerce"
 }
 
 variable "instance_type" {
   description = "EC2 instance type"
   type        = string
-  default     = "t3.medium"
+  default     = "t3.large"
 }
 
 variable "subnet_ids" {
@@ -38,11 +39,11 @@ variable "control_plane_count" {
 variable "worker_count" {
   description = "Number of worker nodes"
   type        = number
-  default     = 2
+  default     = 4
 }
 
 variable "key_name" {
   description = "SSH Key Name"
   type        = string
-  default     = null
+  default     = "cso2-bootstrap-key"
 }

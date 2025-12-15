@@ -27,12 +27,73 @@
   command: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml
   environment:
     KUBECONFIG: /home/ubuntu/.kube/config
+  changed_when: false
 
-- name: Generate join command
-  command: kubeadm token create --print-join-command
+- name: Install Istio on control plane (script)
+  copy:
+    dest: /usr/local/bin/install-istio.sh
+    mode: "0755"
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      export KUBECONFIG=/etc/kubernetes/admin.conf
+
+      # Install helm if missing (from get.helm.sh)
+      if ! command -v helm >/dev/null 2>&1; then
+        ARCH="$(dpkg --print-architecture)"
+        case "$ARCH" in
+          amd64) HELM_ARCH="amd64" ;;
+          arm64) HELM_ARCH="arm64" ;;
+          *) echo "Unsupported arch: $ARCH" >&2; exit 1 ;;
+        esac
+        HELM_VERSION="v3.14.4"
+        cd /tmp
+        curl -fsSL -o helm.tgz "https://get.helm.sh/helm-${HELM_VERSION}-linux-${HELM_ARCH}.tar.gz"
+        tar -xzf helm.tgz
+        install -m 0755 "linux-${HELM_ARCH}/helm" /usr/local/bin/helm
+      fi
+
+      # Istio repo
+      helm repo add istio https://istio-release.storage.googleapis.com/charts >/dev/null 2>&1 || true
+      helm repo update >/dev/null
+
+      # Namespaces
+      kubectl get ns istio-system >/dev/null 2>&1 || kubectl create ns istio-system
+      kubectl get ns istio-ingress >/dev/null 2>&1 || kubectl create ns istio-ingress
+      kubectl get ns cso2-dev >/dev/null 2>&1 || kubectl create ns cso2-dev
+
+      # Sidecar injection
+      kubectl label ns cso2-dev istio-injection=enabled --overwrite
+
+      # Install Istio
+      helm upgrade --install istio-base istio/base -n istio-system --set defaultRevision=default
+      helm upgrade --install istiod istio/istiod -n istio-system
+      helm upgrade --install istio-ingress istio/gateway -n istio-ingress
+
+      kubectl get pods -n istio-system
+      kubectl get pods -n istio-ingress
+
+- name: Run Istio install script
+  command: /usr/local/bin/install-istio.sh
+  args:
+    creates: /etc/istio_installed
+  register: istio_install
+  changed_when: true
+
+- name: Mark Istio installed
+  file:
+    path: /etc/istio_installed
+    state: touch
+  when: istio_install is changed
+    
+- name: Generate join command (fresh token each run, short TTL)
+  command: kubeadm token create --ttl 1h --print-join-command
   register: join_command
+  run_once: true
 
 - name: Save join command to a dummy host
   add_host:
     name: "K8S_TOKEN_HOLDER"
     token: "{{ join_command.stdout }}"
+  run_once: true
