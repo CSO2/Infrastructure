@@ -1,0 +1,6 @@
+---
+# Override these via CI/CD secrets or `--extra-vars` per environment.
+vault_cluster_name: cso2-vault
+vault_kms_region: us-east-1
+# Set to the AWS KMS key id/arn output by Terraform (vault_kms_key_arn)
+vault_kms_key_id: ""

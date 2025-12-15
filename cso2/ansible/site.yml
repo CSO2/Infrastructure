@@ -13,3 +13,8 @@
   become: yes
   roles:
     - worker
+
+- hosts: role_vault
+  become: yes
+  roles:
+    - vault

@@ -39,3 +39,21 @@ variable "key_name" {
   type        = string
   default     = null
 }
+
+variable "vault_instance_type" {
+  description = "Instance type for Vault nodes"
+  type        = string
+  default     = "t3.small"
+}
+
+variable "vault_node_count" {
+  description = "Number of Vault instances (3 recommended for HA)"
+  type        = number
+  default     = 3
+}
+
+variable "vault_volume_size" {
+  description = "Root volume size (GiB) for Vault nodes"
+  type        = number
+  default     = 40
+}

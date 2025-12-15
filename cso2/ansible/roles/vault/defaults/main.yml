@@ -1,0 +1,31 @@
+---
+vault_version: latest
+vault_config_path: /etc/vault.d/vault.hcl
+vault_data_dir: /opt/vault/data
+vault_cluster_name: cso2-vault
+vault_tls_disable: true
+vault_kms_region: us-east-1
+vault_kms_key_id: ""
+vault_api_addr: "http://{{ ansible_default_ipv4.address }}:8200"
+vault_cluster_addr: "http://{{ ansible_default_ipv4.address }}:8201"
+vault_raft_node_id: "{{ inventory_hostname }}"
+vault_admin_token: ""
+vault_kv_mount_path: secret
+vault_k8s_auth_path: kubernetes
+vault_k8s_roles:
+  - name: cso2-dev-external-secrets
+    policy_name: cso2-dev-external-secrets
+    policy_path: secret/data/cso2/dev/*
+    service_account_names:
+      - external-secrets
+    service_account_namespaces:
+      - external-secrets
+    ttl: 1h
+  - name: cso2-prod-external-secrets
+    policy_name: cso2-prod-external-secrets
+    policy_path: secret/data/cso2/prod/*
+    service_account_names:
+      - external-secrets
+    service_account_namespaces:
+      - external-secrets
+    ttl: 1h

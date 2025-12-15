@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Function to check if a command exists
 command_exists() {
   command -v "$1" >/dev/null 2>&1
@@ -53,12 +55,27 @@ install_prerequisites() {
     echo "Installing Helm..."
     curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
   fi
+
+  # Install Vault CLI if not installed
+  if ! command_exists vault; then
+    echo "Installing Vault CLI..."
+    curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+    echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | \
+      sudo tee /etc/apt/sources.list.d/hashicorp.list >/dev/null
+    sudo apt-get update
+    sudo apt-get install -y vault
+  fi
 }
 
 # Start Minikube
 start_minikube() {
   echo "Starting Minikube..."
   minikube start --driver=docker --cpus=12 --memory=7096
+}
+
+start_local_vault() {
+  echo "Starting local Vault container (host network)..."
+  "$SCRIPT_DIR/start_dev_vault.sh"
 }
 
 # Verify Minikube setup
@@ -93,31 +110,206 @@ install_istio() {
   kubectl get pods -n istio-ingress
 }
 
+install_external_secrets() {
+  echo "Installing External Secrets Operator..."
+
+  if ! helm repo list | grep -q 'external-secrets'; then
+    helm repo add external-secrets https://charts.external-secrets.io
+  fi
+
+  helm repo update external-secrets || helm repo update
+
+  kubectl create namespace external-secrets --dry-run=client -o yaml | kubectl apply -f -
+
+  helm upgrade --install external-secrets external-secrets/external-secrets \
+    -n external-secrets \
+    --set installCRDs=true \
+    --wait
+
+  echo "External Secrets Operator status:"
+  kubectl get pods -n external-secrets
+}
+
+configure_vault_kubernetes_auth() {
+  if [ "${SKIP_VAULT_CONFIG:-false}" = "true" ]; then
+    echo "Skipping Vault Kubernetes auth configuration (SKIP_VAULT_CONFIG=true)."
+    return
+  fi
+
+  if [ -z "${VAULT_TOKEN:-}" ]; then
+    echo "VAULT_TOKEN is not set. Export a token with permissions to configure Vault and rerun to automate Kubernetes auth."
+    return
+  fi
+
+  export VAULT_ADDR="${VAULT_ADDR:-http://localhost:8200}"
+
+  if ! vault status >/dev/null 2>&1; then
+    echo "Vault is not reachable at ${VAULT_ADDR}. Skipping Kubernetes auth configuration."
+    return
+  fi
+
+  echo "Configuring Vault Kubernetes auth..."
+
+  vault secrets enable -path=secret kv-v2 >/dev/null 2>&1 || true
+  vault auth enable kubernetes >/dev/null 2>&1 || true
+
+  local sa_namespace="${EXTERNAL_SECRETS_NAMESPACE:-external-secrets}"
+  local sa_name="${EXTERNAL_SECRETS_SERVICE_ACCOUNT:-external-secrets}"
+
+  echo "Fetching Kubernetes service account token for ${sa_namespace}/${sa_name}..."
+  local sa_secret=""
+  for attempt in {1..10}; do
+    sa_secret=$(kubectl get sa "$sa_name" -n "$sa_namespace" -o jsonpath='{.secrets[0].name}' 2>/dev/null || true)
+    [ -n "$sa_secret" ] && break
+    sleep 2
+  done
+
+  if [ -z "$sa_secret" ]; then
+    echo "Unable to find service account secret for ${sa_namespace}/${sa_name}. Ensure the External Secrets Operator finished installing."
+    return
+  fi
+
+  local token host ca
+  token=$(kubectl get secret "$sa_secret" -n "$sa_namespace" -o jsonpath='{.data.token}' | base64 -d)
+  host=$(kubectl config view --raw --minify --flatten -o jsonpath='{.clusters[0].cluster.server}')
+  ca=$(kubectl config view --raw --minify --flatten -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 -d)
+
+  vault write auth/kubernetes/config \
+    token_reviewer_jwt="$token" \
+    kubernetes_host="$host" \
+    kubernetes_ca_cert="$ca"
+
+  cat <<'EOF' | vault policy write cso2-dev-external-secrets -
+path "secret/data/cso2/dev/*" {
+  capabilities = ["read"]
+}
+EOF
+
+  cat <<'EOF' | vault policy write cso2-prod-external-secrets -
+path "secret/data/cso2/prod/*" {
+  capabilities = ["read"]
+}
+EOF
+
+  vault write auth/kubernetes/role/cso2-dev-external-secrets \
+    bound_service_account_names="${sa_name}" \
+    bound_service_account_namespaces="${sa_namespace}" \
+    policies=cso2-dev-external-secrets \
+    ttl=1h
+
+  vault write auth/kubernetes/role/cso2-prod-external-secrets \
+    bound_service_account_names="${sa_name}" \
+    bound_service_account_namespaces="${sa_namespace}" \
+    policies=cso2-prod-external-secrets \
+    ttl=1h
+
+  echo "Vault Kubernetes auth configured."
+}
+
+generate_jwt_pair() {
+  local private_file
+  private_file=$(mktemp)
+  local public_file
+  public_file=$(mktemp)
+
+  openssl genrsa -out "$private_file" 4096 >/dev/null 2>&1
+  openssl rsa -in "$private_file" -pubout -out "$public_file" >/dev/null 2>&1
+
+  DEV_JWT_PRIVATE=$(awk '{printf "%s\\n", $0}' "$private_file" | sed 's/\\n$//')
+  DEV_JWT_PUBLIC=$(awk '{printf "%s\\n", $0}' "$public_file" | sed 's/\\n$//')
+
+  rm -f "$private_file" "$public_file"
+}
+
+seed_dev_vault_secrets() {
+  if [ "${SKIP_VAULT_SEEDING:-false}" = "true" ]; then
+    echo "Skipping Vault secret seeding (SKIP_VAULT_SEEDING=true)."
+    return
+  fi
+
+  if [ -z "${VAULT_TOKEN:-}" ]; then
+    echo "VAULT_TOKEN is not set. Export a token with permissions to write KV secrets to automate seeding."
+    return
+  fi
+
+  export VAULT_ADDR="${VAULT_ADDR:-http://vault:8200}"
+
+  if ! vault status >/dev/null 2>&1; then
+    echo "Vault is not reachable at ${VAULT_ADDR}. Skipping secret seeding."
+    return
+  fi
+
+  echo "Seeding development secrets into Vault (sample values only)..."
+  generate_jwt_pair
+
+  vault kv put secret/cso2/dev/redis \
+    REDIS_PASSWORD="${DEV_REDIS_PASSWORD:-changeme}"
+
+  vault kv put secret/cso2/dev/postgresql \
+    POSTGRES_USER="${DEV_POSTGRES_USER:-postgres}" \
+    POSTGRES_PASSWORD="${DEV_POSTGRES_PASSWORD:-changeme}" \
+    CSO2_USER="${DEV_CSO2_DB_USER:-cso2}" \
+    CSO2_PASSWORD="${DEV_CSO2_DB_PASSWORD:-changeme}"
+
+  vault kv put secret/cso2/dev/mongodb \
+    MONGO_INITDB_ROOT_USERNAME="${DEV_MONGO_ROOT_USER:-admin}" \
+    MONGO_INITDB_ROOT_PASSWORD="${DEV_MONGO_ROOT_PASSWORD:-changeme}"
+
+  vault kv put secret/cso2/dev/user-identity-service \
+    DATABASE_PASSWORD="${DEV_USER_IDENTITY_DB_PASSWORD:-changeme}" \
+    MONGODB_URI="${DEV_USER_IDENTITY_MONGO_URI:-mongodb://admin:changeme@mongodb:27017/cso2_user_identity}" \
+    JWT_PRIVATE_KEY="$DEV_JWT_PRIVATE" \
+    JWT_PUBLIC_KEY="$DEV_JWT_PUBLIC"
+
+  vault kv put secret/cso2/dev/product-catalogue-service \
+    MONGODB_URI="${DEV_CATALOG_MONGO_URI:-mongodb://admin:changeme@mongodb:27017/CSO2_product_catalogue_service?authSource=admin}"
+
+  vault kv put secret/cso2/dev/order-service \
+    DATABASE_PASSWORD="${DEV_ORDER_DB_PASSWORD:-changeme}"
+
+  vault kv put secret/cso2/dev/shoppingcart-wishlist-service \
+    MONGODB_URI="${DEV_CART_MONGO_URI:-mongodb://admin:changeme@mongodb:27017/CSO2_shoppingcart_wishlist_service}" \
+    REDIS_PASSWORD="${DEV_REDIS_PASSWORD:-changeme}"
+
+  vault kv put secret/cso2/dev/support-service \
+    DATABASE_PASSWORD="${DEV_SUPPORT_DB_PASSWORD:-changeme}" \
+    MONGODB_URI="${DEV_SUPPORT_MONGO_URI:-mongodb://admin:changeme@mongodb:27017/CSO2_support_service?authSource=admin}" \
+    ORDER_SERVICE_URL="${DEV_ORDER_SERVICE_URL:-http://order-service:8083}"
+
+  vault kv put secret/cso2/dev/content-service \
+    MONGODB_URI="${DEV_CONTENT_MONGO_URI:-mongodb://admin:changeme@mongodb:27017/CSO2_content_service?authSource=admin}"
+
+  vault kv put secret/cso2/dev/notifications-service \
+    MONGODB_URI="${DEV_NOTIFICATIONS_MONGO_URI:-mongodb://admin:changeme@mongodb:27017/CSO2_notifications_service?authSource=admin}" \
+    MAIL_USERNAME="${DEV_MAIL_USERNAME:-your-email@gmail.com}" \
+    MAIL_PASSWORD="${DEV_MAIL_PASSWORD:-your-app-password}" \
+    ADMIN_EMAIL="${DEV_ADMIN_EMAIL:-admin@cso2.com}" \
+    TWILIO_ACCOUNT_SID="${DEV_TWILIO_ACCOUNT_SID:-}" \
+    TWILIO_AUTH_TOKEN="${DEV_TWILIO_AUTH_TOKEN:-}" \
+    TWILIO_PHONE_NUMBER="${DEV_TWILIO_PHONE_NUMBER:-}" \
+    FIREBASE_CONFIG_PATH="${DEV_FIREBASE_CONFIG_PATH:-classpath:firebase-service-account.json}"
+
+  vault kv put secret/cso2/dev/reporting-and-analysis-service \
+    DATABASE_PASSWORD="${DEV_REPORTING_DB_PASSWORD:-changeme}"
+
+  echo "Sample development secrets stored in Vault. Replace these values with secure credentials before using non-local environments."
+}
+
 # Deploy CSO2 application
 deploy_cso2() {
   echo "Deploying CSO2 application..."
   
-  # Get the directory where the script is located
-  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   K8S_DIR="$SCRIPT_DIR/../../k8s"
-  
-  # Check if .env exists
-  if [ ! -f "$K8S_DIR/overlays/dev/.env" ]; then
-    echo "⚠️  .env not found. Creating from .env.example..."
-    cp "$K8S_DIR/overlays/dev/.env.example" "$K8S_DIR/overlays/dev/.env"
-    echo "⚠️  Please edit $K8S_DIR/overlays/dev/.env with your actual secrets"
-    echo ""
-    echo "Generate JWT keys with:"
-    echo "  openssl genrsa -out private_key.pem 4096"
-    echo "  openssl rsa -in private_key.pem -pubout -out public_key.pem"
-    echo ""
-    read -p "Press Enter after updating .env file to continue..."
-  fi
   
   # Ensure cso2-dev namespace exists (with Istio injection label)
   echo "Ensuring cso2-dev namespace exists..."
   kubectl create namespace cso2-dev --dry-run=client -o yaml | kubectl apply -f -
   kubectl label namespace cso2-dev istio-injection=enabled --overwrite
+
+  echo ""
+  echo "Make sure Vault is running and contains the secrets referenced under overlays/dev/secrets/* before continuing."
+  echo "Press Ctrl+C to abort and seed Vault if needed."
+  sleep 3
 
   # Apply Kustomize manifests
   echo "Applying Kustomize manifests..."
@@ -170,10 +362,14 @@ main() {
   echo "========================================="
   echo ""
   
-  install_prerequisites
-  start_minikube
-  verify_minikube
-  install_istio
+  # install_prerequisites
+  # start_minikube
+  # start_local_vault
+  # verify_minikube
+  # install_istio
+  # install_external_secrets
+  # configure_vault_kubernetes_auth
+  # seed_dev_vault_secrets
   deploy_cso2
   show_access_info
 }

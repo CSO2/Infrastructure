@@ -20,3 +20,4 @@ resources:
 - ../../base/services/reporting-and-analysis-service
 - ../../base/services/ai-service
 - istio
+- secrets

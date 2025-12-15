@@ -19,6 +19,8 @@ resources:
 - ../../base/services/reporting-and-analysis-service
 - ../../base/services/ai-service
 - istio
+- vault-external-service.yaml
+- secrets
 
 configMapGenerator:
 - behavior: create
@@ -80,41 +82,6 @@ configMapGenerator:
   - SERVER_PORT=8088
   - DATABASE_URL=jdbc:postgresql://postgresql:5432/cso2_reporting_service
   name: reporting-and-analysis-service-config
-
-secretGenerator:
-- envs:
-  - .env.redis
-  name: redis-secrets
-- envs:
-  - .env.postgresql
-  name: postgresql-secrets
-- envs:
-  - .env.mongodb
-  name: mongodb-secrets
-- envs:
-  - .env.user-identity-service
-  name: user-identity-service-secrets
-- envs:
-  - .env.product-catalogue-service
-  name: product-catalogue-service-secrets
-- envs:
-  - .env.order-service
-  name: order-service-secrets
-- envs:
-  - .env.shoppingcart-wishlist-service
-  name: shoppingcart-wishlist-service-secrets
-- envs:
-  - .env.support-service
-  name: support-service-secrets
-- envs:
-  - .env.content-service
-  name: content-service-secrets
-- envs:
-  - .env.notifications-service
-  name: notifications-service-secrets
-- envs:
-  - .env.reporting-and-analysis-service
-  name: reporting-and-analysis-service-secrets
 
 patches:
 - patch: |-

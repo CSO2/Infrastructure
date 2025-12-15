@@ -31,6 +31,9 @@ install_package() {
 # Install Terraform
 install_package "terraform" "terraform"
 
+# Install Vault CLI
+install_package "vault" "vault"
+
 # Install Ansible
 install_package "ansible" "ansible"
 

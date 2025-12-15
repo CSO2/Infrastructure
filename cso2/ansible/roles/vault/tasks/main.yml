@@ -1,0 +1,167 @@
+---
+- name: Add HashiCorp GPG key
+  ansible.builtin.apt_key:
+    url: https://apt.releases.hashicorp.com/gpg
+    state: present
+
+- name: Add HashiCorp repository
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+    state: present
+
+- name: Install Vault
+  ansible.builtin.apt:
+    name: vault{{ '' if vault_version in ['latest', ''] else '=' + vault_version }}
+    state: present
+    update_cache: yes
+
+- name: Ensure Vault data directory exists
+  ansible.builtin.file:
+    path: "{{ vault_data_dir }}"
+    state: directory
+    owner: vault
+    group: vault
+    mode: "0750"
+
+- name: Template Vault configuration
+  ansible.builtin.template:
+    src: vault.hcl.j2
+    dest: "{{ vault_config_path }}"
+    owner: vault
+    group: vault
+    mode: "0640"
+  notify: reload vault
+
+- name: Ensure Vault systemd override directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/system/vault.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure Vault systemd override
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/vault.service.d/override.conf
+    content: |
+      [Service]
+      Environment="VAULT_ADDR={{ vault_api_addr }}"
+      Environment="VAULT_API_ADDR={{ vault_api_addr }}"
+      Environment="VAULT_CLUSTER_ADDR={{ vault_cluster_addr }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload vault
+
+- name: Reload systemd to pick up overrides
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: Ensure Vault service is enabled and started
+  ansible.builtin.service:
+    name: vault
+    state: started
+    enabled: yes
+
+- name: Prepare Vault CLI environment
+  ansible.builtin.set_fact:
+    vault_cli_env:
+      VAULT_ADDR: "{{ vault_api_addr }}"
+      VAULT_TOKEN: "{{ vault_admin_token }}"
+  when: vault_admin_token | length > 0
+
+- name: Capture Kubernetes auth connection details
+  ansible.builtin.set_fact:
+    vault_k8s_connection:
+      token_reviewer_jwt: "{{ hostvars['k8s_vault_integration'].token_reviewer_jwt }}"
+      kubernetes_host: "{{ hostvars['k8s_vault_integration'].kubernetes_host }}"
+      kubernetes_ca_cert: "{{ hostvars['k8s_vault_integration'].kubernetes_ca_cert }}"
+  when:
+    - vault_cli_env is defined
+    - hostvars.get('k8s_vault_integration') is defined
+
+- name: Configure Vault Kubernetes auth for External Secrets
+  when:
+    - vault_cli_env is defined
+    - vault_k8s_connection is defined
+    - vault_k8s_roles | length > 0
+  block:
+    - name: Get enabled secret engines
+      ansible.builtin.command: vault secrets list -format=json
+      environment: "{{ vault_cli_env }}"
+      register: vault_secret_list
+      changed_when: false
+
+    - name: Check if KV engine is mounted
+      ansible.builtin.set_fact:
+        kv_mount_exists: "{{ (vault_secret_list.stdout | from_json).keys() | select('equalto', vault_kv_mount_path ~ '/') | list | length > 0 }}"
+
+    - name: Enable KV v2 secrets engine
+      ansible.builtin.command: vault secrets enable -path={{ vault_kv_mount_path }} kv-v2
+      environment: "{{ vault_cli_env }}"
+      when: not kv_mount_exists
+
+    - name: Get enabled auth methods
+      ansible.builtin.command: vault auth list -format=json
+      environment: "{{ vault_cli_env }}"
+      register: vault_auth_list
+      changed_when: false
+
+    - name: Check if Kubernetes auth is enabled
+      ansible.builtin.set_fact:
+        kubernetes_auth_enabled: "{{ (vault_auth_list.stdout | from_json).keys() | select('equalto', vault_k8s_auth_path ~ '/') | list | length > 0 }}"
+
+    - name: Enable Kubernetes auth
+      ansible.builtin.command: vault auth enable {{ vault_k8s_auth_path }}
+      environment: "{{ vault_cli_env }}"
+      when: not kubernetes_auth_enabled
+
+    - name: Write Kubernetes CA certificate to temporary file
+      ansible.builtin.copy:
+        dest: /tmp/vault-k8s-ca.pem
+        content: "{{ vault_k8s_connection.kubernetes_ca_cert }}"
+        mode: "0600"
+
+    - name: Configure Kubernetes auth connection
+      ansible.builtin.shell: |
+        vault write auth/{{ vault_k8s_auth_path }}/config \
+          token_reviewer_jwt="{{ vault_k8s_connection.token_reviewer_jwt }}" \
+          kubernetes_host="{{ vault_k8s_connection.kubernetes_host }}" \
+          kubernetes_ca_cert=@/tmp/vault-k8s-ca.pem
+      environment: "{{ vault_cli_env }}"
+
+    - name: Remove temporary Kubernetes CA certificate
+      ansible.builtin.file:
+        path: /tmp/vault-k8s-ca.pem
+        state: absent
+
+    - name: Create Vault policies for External Secrets
+      ansible.builtin.copy:
+        dest: "/tmp/{{ item.policy_name }}.hcl"
+        mode: "0600"
+        content: |
+          path "{{ item.policy_path }}" {
+            capabilities = ["read"]
+          }
+      loop: "{{ vault_k8s_roles }}"
+
+    - name: Apply Vault policies
+      ansible.builtin.command: vault policy write {{ item.policy_name }} /tmp/{{ item.policy_name }}.hcl
+      environment: "{{ vault_cli_env }}"
+      loop: "{{ vault_k8s_roles }}"
+
+    - name: Cleanup temporary policy files
+      ansible.builtin.file:
+        path: "/tmp/{{ item.policy_name }}.hcl"
+        state: absent
+      loop: "{{ vault_k8s_roles }}"
+
+    - name: Configure Vault Kubernetes roles
+      ansible.builtin.command: >
+        vault write auth/{{ vault_k8s_auth_path }}/role/{{ item.name }}
+        bound_service_account_names={{ item.service_account_names | join(',') }}
+        bound_service_account_namespaces={{ item.service_account_namespaces | join(',') }}
+        policies={{ item.policy_name }}
+        ttl={{ item.ttl | default('1h') }}
+      environment: "{{ vault_cli_env }}"
+      loop: "{{ vault_k8s_roles }}"

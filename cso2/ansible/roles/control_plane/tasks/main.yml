@@ -28,6 +28,180 @@
   environment:
     KUBECONFIG: /home/ubuntu/.kube/config
 
+- name: Check if Helm is installed
+  command: helm version --short
+  register: helm_check
+  ignore_errors: true
+
+- name: Download Helm archive
+  get_url:
+    url: "https://get.helm.sh/helm-v{{ helm_version }}-linux-amd64.tar.gz"
+    dest: "/tmp/helm-v{{ helm_version }}-linux-amd64.tar.gz"
+    mode: '0644'
+  when: helm_check.rc != 0
+
+- name: Extract Helm archive
+  unarchive:
+    src: "/tmp/helm-v{{ helm_version }}-linux-amd64.tar.gz"
+    dest: /tmp
+    remote_src: yes
+  when: helm_check.rc != 0
+
+- name: Install Helm binary
+  copy:
+    src: /tmp/linux-amd64/helm
+    dest: /usr/local/bin/helm
+    owner: root
+    group: root
+    mode: '0755'
+  when: helm_check.rc != 0
+
+- name: Cleanup Helm archive
+  file:
+    path: "/tmp/helm-v{{ helm_version }}-linux-amd64.tar.gz"
+    state: absent
+  when: helm_check.rc != 0
+
+- name: Cleanup Helm temp directory
+  file:
+    path: /tmp/linux-amd64
+    state: absent
+  when: helm_check.rc != 0
+
+- name: Add External Secrets Helm repository
+  become_user: ubuntu
+  environment:
+    HOME: /home/ubuntu
+    KUBECONFIG: /home/ubuntu/.kube/config
+  command: helm repo add external-secrets https://charts.external-secrets.io
+  args:
+    creates: /home/ubuntu/.cache/helm/repository/external-secrets-index.yaml
+
+- name: Update External Secrets Helm repository
+  become_user: ubuntu
+  environment:
+    HOME: /home/ubuntu
+    KUBECONFIG: /home/ubuntu/.kube/config
+  command: helm repo update external-secrets
+
+- name: Install External Secrets Operator
+  become_user: ubuntu
+  environment:
+    HOME: /home/ubuntu
+    KUBECONFIG: /home/ubuntu/.kube/config
+  command: >
+    helm upgrade --install external-secrets external-secrets/external-secrets
+    --namespace external-secrets
+    --create-namespace
+    --set installCRDs=true
+    --wait
+  run_once: true
+
+- name: Wait for External Secrets service account secret
+  become_user: ubuntu
+  environment:
+    HOME: /home/ubuntu
+    KUBECONFIG: /home/ubuntu/.kube/config
+  shell: kubectl get sa {{ external_secrets_service_account }} -n {{ external_secrets_namespace }} -o jsonpath='{.secrets[0].name}'
+  register: external_secrets_sa_secret
+  retries: 10
+  delay: 6
+  until: external_secrets_sa_secret.stdout != ""
+  run_once: true
+
+- name: Read External Secrets token reviewer JWT
+  become_user: ubuntu
+  environment:
+    HOME: /home/ubuntu
+    KUBECONFIG: /home/ubuntu/.kube/config
+  shell: kubectl get secret {{ external_secrets_sa_secret.stdout }} -n {{ external_secrets_namespace }} -o jsonpath='{.data.token}'
+  register: external_secrets_sa_token_b64
+  changed_when: false
+  run_once: true
+
+- name: Capture Kubernetes API server host
+  become_user: ubuntu
+  environment:
+    HOME: /home/ubuntu
+    KUBECONFIG: /home/ubuntu/.kube/config
+  command: kubectl config view --raw --minify --flatten -o jsonpath='{.clusters[0].cluster.server}'
+  register: kubernetes_api_host
+  changed_when: false
+  run_once: true
+
+- name: Capture Kubernetes API server CA certificate
+  become_user: ubuntu
+  environment:
+    HOME: /home/ubuntu
+    KUBECONFIG: /home/ubuntu/.kube/config
+  command: kubectl config view --raw --minify --flatten -o jsonpath='{.clusters[0].cluster.certificate-authority-data}'
+  register: kubernetes_api_ca
+  changed_when: false
+  run_once: true
+
+- name: Share Kubernetes auth data with Vault hosts
+  add_host:
+    name: k8s_vault_integration
+    token_reviewer_jwt: "{{ external_secrets_sa_token_b64.stdout | b64decode }}"
+    kubernetes_host: "{{ kubernetes_api_host.stdout }}"
+    kubernetes_ca_cert: "{{ kubernetes_api_ca.stdout | b64decode }}"
+  run_once: true
+
+- name: Add Istio Helm repository
+  become_user: ubuntu
+  environment:
+    HOME: /home/ubuntu
+    KUBECONFIG: /home/ubuntu/.kube/config
+  command: helm repo add istio https://istio-release.storage.googleapis.com/charts
+  args:
+    creates: /home/ubuntu/.cache/helm/repository/istio-index.yaml
+
+- name: Update Istio Helm repository
+  become_user: ubuntu
+  environment:
+    HOME: /home/ubuntu
+    KUBECONFIG: /home/ubuntu/.kube/config
+  command: helm repo update istio
+
+- name: Install istio-base chart
+  become_user: ubuntu
+  environment:
+    HOME: /home/ubuntu
+    KUBECONFIG: /home/ubuntu/.kube/config
+  command: >
+    helm upgrade --install istio-base istio/base
+    --namespace istio-system
+    --set defaultRevision=default
+    --create-namespace
+    --wait
+
+- name: Install istiod control plane
+  become_user: ubuntu
+  environment:
+    HOME: /home/ubuntu
+    KUBECONFIG: /home/ubuntu/.kube/config
+  command: >
+    helm upgrade --install istiod istio/istiod
+    --namespace istio-system
+    --wait
+
+- name: Ensure istio-ingress namespace exists
+  become_user: ubuntu
+  environment:
+    HOME: /home/ubuntu
+    KUBECONFIG: /home/ubuntu/.kube/config
+  shell: kubectl create namespace istio-ingress --dry-run=client -o yaml | kubectl apply -f -
+
+- name: Install istio ingress gateway
+  become_user: ubuntu
+  environment:
+    HOME: /home/ubuntu
+    KUBECONFIG: /home/ubuntu/.kube/config
+  command: >
+    helm upgrade --install istio-ingress istio/gateway
+    --namespace istio-ingress
+    --wait
+
 - name: Generate join command
   command: kubeadm token create --print-join-command
   register: join_command

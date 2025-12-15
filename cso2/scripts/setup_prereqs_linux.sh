@@ -41,6 +41,20 @@ install_kubectl() {
   sudo apt-get install -y kubectl
 }
 
+install_vault_cli() {
+  if command -v vault >/dev/null 2>&1; then
+    echo "Vault CLI is already installed."
+    return
+  fi
+
+  echo "Installing Vault CLI..."
+  sudo install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/hashicorp.gpg
+  echo "deb [signed-by=/etc/apt/keyrings/hashicorp.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | \
+    sudo tee /etc/apt/sources.list.d/hashicorp.list >/dev/null
+  sudo apt-get update -y
+  sudo apt-get install -y vault
+}
 install_ansible() {
   if command -v ansible >/dev/null 2>&1; then
     echo "Ansible is already installed."
@@ -68,6 +82,7 @@ install_terraform
 install_ansible
 install_awscli_v2
 install_kubectl
+install_vault_cli
 
 echo "Prerequisite setup complete."
 echo "Make sure AWS credentials are configured (aws configure / SSO / env vars)."
