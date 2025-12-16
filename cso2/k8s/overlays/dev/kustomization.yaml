@@ -222,7 +222,7 @@ images:
   newTag: dev-198190c
 - name: cso2/product-catalogue-service
   newName: ghcr.io/cso2/product_catalogue_service
-  newTag: dev-b83f243
+  newTag: dev-4979693
 - name: cso2/reporting-and-analysis-service
   newName: ghcr.io/cso2/reporting_and_analysis_service
   newTag: dev-54bf04f
