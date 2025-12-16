@@ -1,0 +1,31 @@
+## JVM configuration
+
+################################################################
+## IMPORTANT: JVM heap size
+################################################################
+-Xms{{ opensearch_heap_size }}
+-Xmx{{ opensearch_heap_size }}
+
+################################################################
+## Expert settings
+################################################################
+-XX:+UseG1GC
+-XX:G1ReservePercent=25
+-XX:InitiatingHeapOccupancyPercent=30
+
+## DNS cache policy
+-Des.networkaddress.cache.ttl=60
+-Des.networkaddress.cache.negative.ttl=10
+
+## Pre-touch memory pages
+-XX:+AlwaysPreTouch
+
+## Explicitly disable biased locking
+-XX:-UseBiasedLocking
+
+## Heap dumps
+-XX:+HeapDumpOnOutOfMemoryError
+-XX:HeapDumpPath={{ opensearch_log_dir }}/heapdump.hprof
+
+## GC logging
+-Xlog:gc*,gc+age=trace,safepoint:file={{ opensearch_log_dir }}/gc.log:utctime,pid,tags:filecount=32,filesize=64m

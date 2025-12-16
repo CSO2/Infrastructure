@@ -1,0 +1,38 @@
+---
+# OpenSearch version
+opensearch_version: "2.11.1"
+
+# OpenSearch directories
+opensearch_home: "/opt/opensearch"
+opensearch_data_dir: "/var/lib/opensearch"
+opensearch_log_dir: "/var/log/opensearch"
+opensearch_config_dir: "/etc/opensearch"
+
+# OpenSearch user
+opensearch_user: "opensearch"
+opensearch_group: "opensearch"
+
+# Network settings
+opensearch_network_host: "0.0.0.0"
+opensearch_http_port: 9200
+opensearch_transport_port: 9300
+
+# Cluster settings
+opensearch_cluster_name: "cso2-opensearch-cluster"
+opensearch_node_name: "{{ ansible_hostname }}"
+# Single node on control plane - no cluster needed for dev
+opensearch_cluster_initial_master_nodes: ["{{ ansible_hostname }}"]
+
+# Security settings
+# Disable security for single-node internal cluster (no SSL certs needed)
+opensearch_security_enabled: false
+opensearch_admin_password: "admin"  # Change in production!
+
+# JVM heap size (recommended: 50% of RAM, max 32GB)
+# For t2.xlarge (16GB RAM), allocate 4GB for OpenSearch
+opensearch_heap_size: "4g"
+
+# Performance tuning
+opensearch_bootstrap_memory_lock: true
+opensearch_max_open_files: 65535
+opensearch_max_map_count: 262144

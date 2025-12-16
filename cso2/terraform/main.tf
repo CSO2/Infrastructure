@@ -1,3 +1,8 @@
+module "backend" {
+  source       = "./modules/backend"
+  project_name = var.project_name
+}
+
 module "vpc" {
   source             = "./modules/vpc"
   project_name       = var.project_name

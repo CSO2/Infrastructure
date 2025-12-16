@@ -1,0 +1,3 @@
+# Ignore secret env files
+.env.*
+!.env.example

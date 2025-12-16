@@ -1,0 +1,150 @@
+---
+- name: Install OpenSearch dependencies
+  apt:
+    name:
+      - openjdk-11-jdk
+      - apt-transport-https
+      - curl
+      - gnupg
+    state: present
+    update_cache: yes
+
+- name: Create OpenSearch user
+  user:
+    name: "{{ opensearch_user }}"
+    system: yes
+    shell: /bin/bash
+    home: "{{ opensearch_home }}"
+    createhome: no
+
+- name: Create OpenSearch directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ opensearch_user }}"
+    group: "{{ opensearch_group }}"
+    mode: '0755'
+  loop:
+    - "{{ opensearch_home }}"
+    - "{{ opensearch_data_dir }}"
+    - "{{ opensearch_log_dir }}"
+    - "{{ opensearch_config_dir }}"
+
+- name: Download OpenSearch
+  get_url:
+    url: "https://artifacts.opensearch.org/releases/bundle/opensearch/{{ opensearch_version }}/opensearch-{{ opensearch_version }}-linux-x64.tar.gz"
+    dest: "/tmp/opensearch-{{ opensearch_version }}.tar.gz"
+    mode: '0644'
+
+- name: Extract OpenSearch
+  unarchive:
+    src: "/tmp/opensearch-{{ opensearch_version }}.tar.gz"
+    dest: "{{ opensearch_home }}"
+    remote_src: yes
+    extra_opts: [--strip-components=1]
+    owner: "{{ opensearch_user }}"
+    group: "{{ opensearch_group }}"
+  args:
+    creates: "{{ opensearch_home }}/bin/opensearch"
+
+- name: Set system limits for OpenSearch
+  pam_limits:
+    domain: "{{ opensearch_user }}"
+    limit_type: "{{ item.limit_type }}"
+    limit_item: "{{ item.limit_item }}"
+    value: "{{ item.value }}"
+  loop:
+    - { limit_type: 'soft', limit_item: 'nofile', value: '{{ opensearch_max_open_files }}' }
+    - { limit_type: 'hard', limit_item: 'nofile', value: '{{ opensearch_max_open_files }}' }
+    - { limit_type: 'soft', limit_item: 'memlock', value: 'unlimited' }
+    - { limit_type: 'hard', limit_item: 'memlock', value: 'unlimited' }
+
+- name: Set vm.max_map_count
+  sysctl:
+    name: vm.max_map_count
+    value: "{{ opensearch_max_map_count }}"
+    state: present
+    reload: yes
+
+- name: Configure OpenSearch YAML
+  template:
+    src: opensearch.yml.j2
+    dest: "{{ opensearch_home }}/config/opensearch.yml"
+    owner: "{{ opensearch_user }}"
+    group: "{{ opensearch_group }}"
+    mode: '0644'
+  notify: restart opensearch
+
+- name: Configure JVM options
+  template:
+    src: jvm.options.j2
+    dest: "{{ opensearch_home }}/config/jvm.options"
+    owner: "{{ opensearch_user }}"
+    group: "{{ opensearch_group }}"
+    mode: '0644'
+  notify: restart opensearch
+
+- name: Set execute permissions on security tools
+  file:
+    path: "{{ opensearch_home }}/plugins/opensearch-security/tools"
+    state: directory
+    recurse: yes
+    mode: '0755'
+  when: opensearch_security_enabled
+
+- name: Set execute permissions on hash.sh specifically
+  file:
+    path: "{{ opensearch_home }}/plugins/opensearch-security/tools/hash.sh"
+    mode: '0755'
+  when: opensearch_security_enabled
+
+- name: Set OpenSearch admin password
+  shell: |
+    {{ opensearch_home }}/plugins/opensearch-security/tools/hash.sh -p {{ opensearch_admin_password }}
+  register: admin_password_hash
+  changed_when: false
+  when: opensearch_security_enabled
+
+- name: Configure internal users
+  template:
+    src: internal_users.yml.j2
+    dest: "{{ opensearch_home }}/config/opensearch-security/internal_users.yml"
+    owner: "{{ opensearch_user }}"
+    group: "{{ opensearch_group }}"
+    mode: '0644'
+  when: opensearch_security_enabled
+
+- name: Create OpenSearch systemd service
+  template:
+    src: opensearch.service.j2
+    dest: /etc/systemd/system/opensearch.service
+    mode: '0644'
+  notify: reload systemd
+
+- name: Enable and start OpenSearch service
+  systemd:
+    name: opensearch
+    enabled: yes
+    state: started
+    daemon_reload: yes
+
+- name: Wait for OpenSearch to start
+  wait_for:
+    port: "{{ opensearch_http_port }}"
+    delay: 10
+    timeout: 300
+
+- name: Initialize security plugin (first node only)
+  shell: |
+    {{ opensearch_home }}/plugins/opensearch-security/tools/securityadmin.sh \
+      -cd {{ opensearch_home }}/config/opensearch-security \
+      -icl -nhnv \
+      -cacert {{ opensearch_home }}/config/root-ca.pem \
+      -cert {{ opensearch_home }}/config/kirk.pem \
+      -key {{ opensearch_home }}/config/kirk-key.pem
+  args:
+    creates: /var/lib/opensearch/.security_initialized
+  when: 
+    - opensearch_security_enabled
+    - inventory_hostname == groups['opensearch'][0]
+  notify: mark security initialized

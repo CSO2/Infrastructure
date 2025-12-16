@@ -1,6 +1,9 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+# Singapore environment overlay - targets singapore branch
+namespace: cso2-singapore
+
 resources:
 - ../../base/infrastructure/mongodb
 - ../../base/infrastructure/postgresql
@@ -121,37 +124,37 @@ patches:
 - patch: |-
     - op: add
       path: /metadata/namespace
-      value: cso2-dev
+      value: cso2-singapore
   target:
     kind: Deployment
 - patch: |-
     - op: add
       path: /metadata/namespace
-      value: cso2-dev
+      value: cso2-singapore
   target:
     kind: Service
 - patch: |-
     - op: add
       path: /metadata/namespace
-      value: cso2-dev
+      value: cso2-singapore
   target:
     kind: ConfigMap
 - patch: |-
     - op: add
       path: /metadata/namespace
-      value: cso2-dev
+      value: cso2-singapore
   target:
     kind: Secret
 - patch: |-
     - op: add
       path: /metadata/namespace
-      value: cso2-dev
+      value: cso2-singapore
   target:
     kind: PersistentVolumeClaim
 - patch: |-
     - op: add
       path: /metadata/namespace
-      value: cso2-dev
+      value: cso2-singapore
   target:
     kind: ServiceAccount
 - patch: |-
@@ -163,16 +166,17 @@ patches:
   target:
     kind: Gateway
     name: cso2-gateway
+# Singapore resources - slightly more than dev for regional performance
 - patch: |-
     - op: replace
       path: /spec/template/spec/containers/0/resources
       value:
         requests:
-          memory: "128Mi"
-          cpu: "100m"
-        limits:
           memory: "256Mi"
-          cpu: "250m"
+          cpu: "200m"
+        limits:
+          memory: "512Mi"
+          cpu: "500m"
   target:
     kind: Deployment
     labelSelector: type=backend-service
@@ -181,11 +185,11 @@ patches:
       path: /spec/template/spec/containers/0/resources
       value:
         requests:
-          memory: "128Mi"
-          cpu: "100m"
-        limits:
           memory: "256Mi"
-          cpu: "250m"
+          cpu: "200m"
+        limits:
+          memory: "512Mi"
+          cpu: "500m"
   target:
     kind: Deployment
     labelSelector: type=backend-infra
@@ -194,42 +198,44 @@ patches:
       path: /spec/template/spec/containers/0/resources
       value:
         requests:
-          memory: "128Mi"
-          cpu: "100m"
-        limits:
           memory: "256Mi"
-          cpu: "250m"
+          cpu: "200m"
+        limits:
+          memory: "512Mi"
+          cpu: "500m"
   target:
     kind: Deployment
     labelSelector: type=frontend
+
+# Image tags - uses main branch images (same as prod), synced via ArgoCD
 images:
-- name: cso2/api-gateway
-  newName: cso2/api-gateway
-  newTag: dev-a351306
+- name: cso2/ai-service
+  newName: ghcr.io/cso2/ai_service
+  newTag: main-c7fa651
 - name: cso2/content-service
-  newName: cso2/content-service
-  newTag: dev-cb7c8d0
+  newName: ghcr.io/cso2/content_service
+  newTag: main-60f0d72
 - name: cso2/frontend
-  newName: cso2/frontend
-  newTag: dev-3af9bdd
+  newName: ghcr.io/cso2/frontend_web
+  newTag: main-3af9bdd
 - name: cso2/notifications-service
-  newName: cso2/notifications-service
-  newTag: dev-75acc90
+  newName: ghcr.io/cso2/notifications_service
+  newTag: main-dd7903f
 - name: cso2/order-service
-  newName: cso2/order-service
-  newTag: dev-c39ca1e
+  newName: ghcr.io/cso2/order_service
+  newTag: main-b8004ae
 - name: cso2/product-catalogue-service
-  newName: cso2/product-catalogue-service
-  newTag: dev-2c4e7ec
+  newName: ghcr.io/cso2/product_catalogue_service
+  newTag: main-ae47511
 - name: cso2/reporting-and-analysis-service
-  newName: cso2/reporting-and-analysis-service
-  newTag: dev-abd2180
+  newName: ghcr.io/cso2/reporting_and_analysis_service
+  newTag: main-0265e27
 - name: cso2/shoppingcart-wishlist-service
-  newName: cso2/shoppingcart-wishlist-service
-  newTag: dev-065b8e6
+  newName: ghcr.io/cso2/shoppingcart_wishlist_service
+  newTag: main-8438112
 - name: cso2/support-service
-  newName: cso2/support-service
-  newTag: dev-3e2b8bf
+  newName: ghcr.io/cso2/support_service
+  newTag: main-5a2374c
 - name: cso2/user-identity-service
-  newName: cso2/user-identity-service
-  newTag: dev-ba71dcd
+  newName: ghcr.io/cso2/user_identity_service
+  newTag: main-d540e52

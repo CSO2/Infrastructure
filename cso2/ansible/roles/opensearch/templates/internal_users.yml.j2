@@ -1,0 +1,18 @@
+---
+# Internal users configuration for OpenSearch Security
+
+_meta:
+  type: "internalusers"
+  config_version: 2
+
+admin:
+  hash: "{{ admin_password_hash.stdout }}"
+  reserved: true
+  backend_roles:
+  - "admin"
+  description: "Admin user"
+
+kibanaserver:
+  hash: "$2a$12$4AcgAt3xwOWadA5s5blL6ev39OXDNhmOesEoo33eZtrq2N0YrU3H."
+  reserved: true
+  description: "OpenSearch Dashboards server user"

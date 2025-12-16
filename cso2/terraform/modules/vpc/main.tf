@@ -93,6 +93,24 @@ resource "aws_security_group" "k8s_control_plane" {
     self        = true
   }
   
+  # OpenSearch HTTP API (for log collection)
+  ingress {
+    description = "OpenSearch HTTP"
+    from_port   = 9200
+    to_port     = 9200
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  # OpenSearch transport (inter-node, if clustering later)
+  ingress {
+    description = "OpenSearch transport"
+    from_port   = 9300
+    to_port     = 9300
+    protocol    = "tcp"
+    self        = true
+  }
+  
   # Allow SSH if needed (though SSM is preferred)
   ingress {
     description = "SSH"

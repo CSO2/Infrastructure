@@ -31,7 +31,7 @@ variable "availability_zones" {
 variable "instance_type" {
   description = "Instance Type"
   type        = string
-  default     = "t3.medium"
+  default     = "t2.xlarge"
 }
 
 variable "key_name" {

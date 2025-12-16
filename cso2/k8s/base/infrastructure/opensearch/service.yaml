@@ -1,0 +1,34 @@
+# Headless service pointing to OpenSearch on K8s control plane
+# OpenSearch runs on the control plane node
+apiVersion: v1
+kind: Service
+metadata:
+  name: opensearch
+  namespace: cso2-dev
+  labels:
+    app: opensearch
+    type: infrastructure
+spec:
+  clusterIP: None
+  ports:
+  - port: 9200
+    targetPort: 9200
+    protocol: TCP
+    name: http
+---
+# Manual endpoints for OpenSearch on control plane
+# This will be auto-populated after Terraform creates control plane
+# Update with actual control plane private IP after deployment
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: opensearch
+  namespace: cso2-dev
+subsets:
+  - addresses:
+    # Control plane private IP from Singapore deployment
+    - ip: 10.0.1.8
+    ports:
+    - name: http
+      port: 9200
+      protocol: TCP

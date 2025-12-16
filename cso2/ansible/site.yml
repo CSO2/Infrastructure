@@ -8,8 +8,15 @@
   become: yes
   roles:
     - control_plane
+    - opensearch
 
 - hosts: role_worker
   become: yes
   roles:
     - worker
+
+# OpenSearch is now deployed on control plane, remove separate host group
+# - hosts: opensearch
+#   become: yes
+#   roles:
+#     - opensearch

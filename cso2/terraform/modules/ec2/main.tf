@@ -24,14 +24,15 @@ resource "aws_instance" "control_plane" {
   key_name               = var.key_name
 
   tags = {
-    Name = "${var.project_name}-control-plane-${count.index + 1}"
-    Project = var.project_name
-    Role = "control-plane"
+    Name           = "${var.project_name}-control-plane-${count.index + 1}"
+    Project        = var.project_name
+    Role           = "control-plane"
+    OpensearchNode = "true"
   }
 }
 
 resource "aws_instance" "worker" {
-  count                  = 4
+  count                  = var.worker_count
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = var.instance_type
   subnet_id              = var.subnet_ids[count.index % length(var.subnet_ids)]

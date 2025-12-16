@@ -4,34 +4,67 @@ on:
   push:
     branches:
       - main
+      - singapore
+    paths:
+      - 'cso2/terraform/**'
+      - 'cso2/ansible/**'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'singapore'
+        type: choice
+        options:
+          - prod
+          - singapore
+      skip_terraform:
+        description: 'Skip Terraform (infrastructure already exists)'
+        required: false
+        default: false
+        type: boolean
+      skip_ansible:
+        description: 'Skip Ansible configuration'
+        required: false
+        default: false
+        type: boolean
 
 env:
   AWS_REGION: ap-southeast-1
+  TF_VAR_environment: ${{ github.ref == 'refs/heads/main' && 'prod' || 'singapore' }}
 
 jobs:
+  # ============================================
+  # TERRAFORM - Infrastructure Provisioning
+  # ============================================
   terraform:
-    name: Terraform
+    name: Terraform - Provision Infrastructure
     runs-on: ubuntu-latest
+    if: ${{ !inputs.skip_terraform }}
     permissions:
       id-token: write
       contents: read
     outputs:
-      control_plane_ip: ${{ steps.tf_output.outputs.control_plane_ip }}
+      control_plane_public_ip: ${{ steps.tf_output.outputs.control_plane_public_ip }}
+      control_plane_private_ip: ${{ steps.tf_output.outputs.control_plane_private_ip }}
+      worker_ips: ${{ steps.tf_output.outputs.worker_ips }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
 
       - name: Terraform Init
         run: terraform init
@@ -46,50 +79,223 @@ jobs:
         working-directory: cso2/terraform
 
       - name: Terraform Apply
-        if: github.ref == 'refs/heads/main'
         run: terraform apply -auto-approve tfplan
         working-directory: cso2/terraform
 
       - name: Get Terraform Outputs
         id: tf_output
         run: |
-          echo "control_plane_ip=$(terraform output -raw control_plane_public_ips | jq -r '.[0]')" >> $GITHUB_OUTPUT
+          echo "control_plane_public_ip=$(terraform output -json control_plane_public_ips | jq -r '.[0]')" >> $GITHUB_OUTPUT
+          echo "control_plane_private_ip=$(terraform output -json control_plane_private_ips | jq -r '.[0]')" >> $GITHUB_OUTPUT
+          echo "worker_ips=$(terraform output -json worker_public_ips | jq -c '.')" >> $GITHUB_OUTPUT
         working-directory: cso2/terraform
 
+      - name: Wait for instances to be ready
+        run: |
+          echo "Waiting 60s for EC2 instances to initialize..."
+          sleep 60
+
+  # ============================================
+  # ANSIBLE - Configuration Management
+  # ============================================
   ansible:
-    name: Ansible
+    name: Ansible - Configure K8s Cluster
     needs: terraform
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: ${{ !inputs.skip_ansible && (success() || inputs.skip_terraform) }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Install Ansible
+      - name: Install Dependencies
         run: |
           sudo apt update
-          sudo apt install -y ansible
+          sudo apt install -y ansible jq
           pip install boto3 botocore
+          ansible-galaxy collection install amazon.aws
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/cso2-key
+          chmod 600 ~/.ssh/cso2-key
+          eval $(ssh-agent -s)
+          ssh-add ~/.ssh/cso2-key
+
+      - name: Create Static Inventory
+        run: |
+          CONTROL_PLANE_IP="${{ needs.terraform.outputs.control_plane_public_ip }}"
+          
+          if [ -z "$CONTROL_PLANE_IP" ]; then
+            CONTROL_PLANE_IP=$(aws ec2 describe-instances \
+              --filters "Name=tag:Role,Values=control-plane" "Name=instance-state-name,Values=running" \
+              --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
+          fi
+          
+          WORKER_IPS=$(aws ec2 describe-instances \
+            --filters "Name=tag:Role,Values=worker" "Name=instance-state-name,Values=running" \
+            --query 'Reservations[*].Instances[*].PublicIpAddress' --output text | tr '\t' '\n')
+          
+          cat > cso2/ansible/inventory/static-hosts.ini << EOF
+          [all:vars]
+          ansible_user=ubuntu
+          ansible_ssh_private_key_file=~/.ssh/cso2-key
+          ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+          
+          [role_control_plane]
+          control-plane-1 ansible_host=${CONTROL_PLANE_IP}
+          
+          [role_worker]
+          EOF
+          
+          i=1
+          for ip in $WORKER_IPS; do
+            echo "worker-$i ansible_host=$ip" >> cso2/ansible/inventory/static-hosts.ini
+            i=$((i+1))
+          done
+          
+          echo "Generated inventory:"
+          cat cso2/ansible/inventory/static-hosts.ini
+
+      - name: Test SSH Connectivity
+        run: |
+          cd cso2/ansible
+          ansible all -i inventory/static-hosts.ini -m ping --timeout=30
+        continue-on-error: true
 
       - name: Run Ansible Playbook
         run: |
-          # Note: In a real scenario, you'd need to handle SSH keys securely.
-          # For this example, we assume the runner has access or we use SSM.
-          # Since SSM is complex to set up in GH Actions without extra tools,
-          # we'll assume SSH key is stored in secrets.
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          
-          ansible-playbook -i inventory/aws_ec2.yml site.yml
-        working-directory: cso2/ansible
+          cd cso2/ansible
+          ansible-playbook -i inventory/static-hosts.ini site.yml -v
         env:
           ANSIBLE_HOST_KEY_CHECKING: "False"
+          ANSIBLE_TIMEOUT: "60"
+
+      - name: Verify K8s Cluster
+        run: |
+          CONTROL_PLANE_IP="${{ needs.terraform.outputs.control_plane_public_ip }}"
+          if [ -z "$CONTROL_PLANE_IP" ]; then
+            CONTROL_PLANE_IP=$(aws ec2 describe-instances \
+              --filters "Name=tag:Role,Values=control-plane" "Name=instance-state-name,Values=running" \
+              --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
+          fi
+          
+          echo "Verifying K8s cluster on $CONTROL_PLANE_IP..."
+          ssh -i ~/.ssh/cso2-key -o StrictHostKeyChecking=no ubuntu@$CONTROL_PLANE_IP '
+            echo "=== K8s Nodes ==="
+            kubectl get nodes -o wide
+            echo ""
+            echo "=== System Pods ==="
+            kubectl get pods -A
+            echo ""
+            echo "=== OpenSearch Status ==="
+            curl -s http://localhost:9200/_cluster/health | jq .
+          '
+
+  # ============================================
+  # ARGOCD - GitOps Deployment
+  # ============================================
+  argocd:
+    name: ArgoCD - Deploy Applications
+    needs: [terraform, ansible]
+    runs-on: ubuntu-latest
+    if: ${{ success() }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/cso2-key
+          chmod 600 ~/.ssh/cso2-key
+
+      - name: Install ArgoCD on K8s
+        run: |
+          CONTROL_PLANE_IP="${{ needs.terraform.outputs.control_plane_public_ip }}"
+          if [ -z "$CONTROL_PLANE_IP" ]; then
+            CONTROL_PLANE_IP=$(aws ec2 describe-instances \
+              --filters "Name=tag:Role,Values=control-plane" "Name=instance-state-name,Values=running" \
+              --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
+          fi
+          
+          ssh -i ~/.ssh/cso2-key -o StrictHostKeyChecking=no ubuntu@$CONTROL_PLANE_IP '
+            if ! kubectl get namespace argocd &>/dev/null; then
+              echo "Installing ArgoCD..."
+              kubectl create namespace argocd
+              kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+              
+              echo "Waiting for ArgoCD to be ready..."
+              kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd
+            else
+              echo "ArgoCD already installed"
+            fi
+            
+            echo "ArgoCD Admin Password:"
+            kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+            echo ""
+          '
+
+      - name: Apply ArgoCD Applications
+        run: |
+          CONTROL_PLANE_IP="${{ needs.terraform.outputs.control_plane_public_ip }}"
+          if [ -z "$CONTROL_PLANE_IP" ]; then
+            CONTROL_PLANE_IP=$(aws ec2 describe-instances \
+              --filters "Name=tag:Role,Values=control-plane" "Name=instance-state-name,Values=running" \
+              --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
+          fi
+          
+          scp -i ~/.ssh/cso2-key -o StrictHostKeyChecking=no \
+            cso2/k8s/argocd/application.yaml \
+            ubuntu@$CONTROL_PLANE_IP:/tmp/argocd-apps.yaml
+          
+          ssh -i ~/.ssh/cso2-key -o StrictHostKeyChecking=no ubuntu@$CONTROL_PLANE_IP '
+            echo "Applying ArgoCD Applications..."
+            kubectl apply -f /tmp/argocd-apps.yaml
+            
+            echo ""
+            echo "ArgoCD Applications:"
+            kubectl get applications -n argocd
+          '
+
+  # ============================================
+  # SUMMARY
+  # ============================================
+  summary:
+    name: Deployment Summary
+    needs: [terraform, ansible, argocd]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Print Summary
+        run: |
+          echo "# Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Infrastructure" >> $GITHUB_STEP_SUMMARY
+          echo "- **Region:** ${{ env.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** ${{ env.TF_VAR_environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Control Plane IP:** ${{ needs.terraform.outputs.control_plane_public_ip }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Job Status" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Terraform | ${{ needs.terraform.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Ansible | ${{ needs.ansible.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ArgoCD | ${{ needs.argocd.result }} |" >> $GITHUB_STEP_SUMMARY

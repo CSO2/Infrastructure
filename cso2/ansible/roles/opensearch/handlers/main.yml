@@ -1,0 +1,16 @@
+---
+- name: restart opensearch
+  systemd:
+    name: opensearch
+    state: restarted
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
+
+- name: mark security initialized
+  file:
+    path: /var/lib/opensearch/.security_initialized
+    state: touch
+    owner: "{{ opensearch_user }}"
+    group: "{{ opensearch_group }}"

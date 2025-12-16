@@ -8,6 +8,7 @@ resources:
 - ../../base/infrastructure/redis
 - ../../base/infrastructure/kafka
 - ../../base/infrastructure/rabbitmq
+- ../../base/infrastructure/opensearch
 - ../../base/istio-config
 - ../../base/frontend
 - ../../base/services/content-service

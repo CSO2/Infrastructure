@@ -1,0 +1,28 @@
+# CSO2 E-commerce Infrastructure - Terraform Variables
+# Copy this file to terraform.tfvars and update values
+
+# AWS Region
+region = "ap-southeast-1"
+
+# Project Name
+project_name = "cso2-ecommerce"
+
+# Environment
+environment = "dev"
+
+# VPC Configuration
+vpc_cidr = "10.0.0.0/16"
+public_subnets = ["10.0.1.0/24", "10.0.2.0/24"]
+availability_zones = ["ap-southeast-1a", "ap-southeast-1b"]
+
+# EC2 Configuration
+instance_type = "t2.xlarge"
+key_name = "your-ssh-key-name"  # Update with your SSH key name
+
+# OpenSearch Configuration
+opensearch_instance_type = "t3.small.search"
+opensearch_instance_count = 2
+opensearch_ebs_volume_size = 20
+opensearch_master_user = "admin"
+opensearch_master_password = "YourSecurePassword123!"  # Use a strong password
+create_opensearch_service_linked_role = true  # Set to false if role already exists

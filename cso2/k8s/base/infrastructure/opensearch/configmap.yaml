@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opensearch-config
+  namespace: cso2-dev
+data:
+  # Self-hosted OpenSearch cluster running on VMs
+  OPENSEARCH_HOST: "opensearch.cso2-dev.svc.cluster.local"
+  OPENSEARCH_PORT: "9200"
+  OPENSEARCH_SCHEME: "https"
+  OPENSEARCH_INDEX_PREFIX: "cso2"
+  OPENSEARCH_VERIFY_SSL: "false"  # Set to true with proper certs in production
