@@ -202,6 +202,9 @@ patches:
     kind: Deployment
     labelSelector: type=frontend
 images:
+- name: cso2/ai-service
+  newName: ghcr.io/cso2/ai_service
+  newTag: dev-2ee9638
 - name: cso2/api-gateway
   newName: cso2/api-gateway
   newTag: dev-a351306
