@@ -1,0 +1,76 @@
+# Argo Rollout for notifications-service
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: notifications-service
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: notifications-service
+  strategy:
+    canary:
+      canaryService: notifications-service-canary
+      stableService: notifications-service
+      trafficRouting:
+        istio:
+          virtualServices:
+            - name: cso2-api
+              routes:
+                - primary
+      steps:
+        - setWeight: 10
+        - pause: { duration: 1m }
+        - setWeight: 25
+        - pause: { duration: 1m }
+        - setWeight: 50
+        - pause: { duration: 2m }
+        - setWeight: 100
+      # Using liveness endpoint to avoid MongoDB/Kafka dependency check in CI
+      analysis:
+        templates:
+          - templateName: canary-health-check
+        startingStep: 1
+        args:
+          - name: service-name
+            value: notifications-service
+          - name: service-port
+            value: "8087"
+          - name: health-path
+            value: "/actuator/health/liveness"
+          - name: namespace
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+  template:
+    metadata:
+      labels:
+        app: notifications-service
+        type: backend-service
+    spec:
+      serviceAccountName: notifications-service-sa
+      containers:
+        - name: spring-boot
+          image: cso2/notifications-service:latest
+          ports:
+            - containerPort: 8087
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: notifications-service-secrets
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8087
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8087
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3

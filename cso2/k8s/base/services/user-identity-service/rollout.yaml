@@ -1,0 +1,87 @@
+# Argo Rollout for user-identity-service
+# Implements Canary deployment with automatic rollback on failure
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: user-identity-service
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: user-identity-service
+  strategy:
+    canary:
+      # Canary service receives traffic during rollout
+      canaryService: user-identity-service-canary
+      # Stable service receives production traffic
+      stableService: user-identity-service
+      # Istio traffic management
+      trafficRouting:
+        istio:
+          virtualServices:
+            - name: cso2-api
+              routes:
+                - primary
+      # Progressive traffic shifting steps
+      steps:
+        # Start with 10% traffic to canary
+        - setWeight: 10
+        - pause: { duration: 1m }
+        # Increase to 25%
+        - setWeight: 25
+        - pause: { duration: 1m }
+        # Increase to 50%
+        - setWeight: 50
+        - pause: { duration: 2m }
+        # Full rollout
+        - setWeight: 100
+      # Analysis for automatic rollback (using liveness to avoid DB dependency check)
+      analysis:
+        templates:
+          - templateName: canary-health-check
+        startingStep: 1
+        args:
+          - name: service-name
+            value: user-identity-service
+          - name: service-port
+            value: "8081"
+          - name: health-path
+            value: "/actuator/health/liveness"
+          - name: namespace
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+  template:
+    metadata:
+      labels:
+        app: user-identity-service
+        type: backend-service
+    spec:
+      serviceAccountName: user-identity-service-sa
+      containers:
+        - name: spring-boot
+          image: cso2/user-identity-service:latest
+          ports:
+            - containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: user-identity-service-config
+            - secretRef:
+                name: user-identity-service-secrets
+          # Readiness probe for canary health
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          # Liveness probe for container health
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3

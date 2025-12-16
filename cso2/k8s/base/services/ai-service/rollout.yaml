@@ -1,0 +1,77 @@
+# Argo Rollout for ai-service
+# Note: ai-service uses Python/FastAPI, health endpoint is /health
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: ai-service
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: ai-service
+  strategy:
+    canary:
+      canaryService: ai-service-canary
+      stableService: ai-service
+      trafficRouting:
+        istio:
+          virtualServices:
+            - name: cso2-api
+              routes:
+                - primary
+      steps:
+        - setWeight: 10
+        - pause: { duration: 1m }
+        - setWeight: 25
+        - pause: { duration: 1m }
+        - setWeight: 50
+        - pause: { duration: 2m }
+        - setWeight: 100
+      analysis:
+        templates:
+          - templateName: canary-health-check
+        startingStep: 1
+        args:
+          - name: service-name
+            value: ai-service
+          - name: service-port
+            value: "8089"
+          - name: health-path
+            value: "/health"
+          - name: namespace
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+  template:
+    metadata:
+      labels:
+        app: ai-service
+        type: backend-service
+    spec:
+      serviceAccountName: ai-service-sa
+      containers:
+        - name: python-app
+          image: cso2/ai-service:latest
+          ports:
+            - containerPort: 8089
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: ai-service-secrets
+          # Python/FastAPI health check
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8089
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8089
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            failureThreshold: 3

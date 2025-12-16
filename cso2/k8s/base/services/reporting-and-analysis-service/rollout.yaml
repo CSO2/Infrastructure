@@ -1,0 +1,78 @@
+# Argo Rollout for reporting-and-analysis-service
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: reporting-and-analysis-service
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: reporting-and-analysis-service
+  strategy:
+    canary:
+      canaryService: reporting-and-analysis-service-canary
+      stableService: reporting-and-analysis-service
+      trafficRouting:
+        istio:
+          virtualServices:
+            - name: cso2-api
+              routes:
+                - primary
+      steps:
+        - setWeight: 10
+        - pause: { duration: 1m }
+        - setWeight: 25
+        - pause: { duration: 1m }
+        - setWeight: 50
+        - pause: { duration: 2m }
+        - setWeight: 100
+      # Using liveness endpoint to avoid DB dependency check in CI
+      analysis:
+        templates:
+          - templateName: canary-health-check
+        startingStep: 1
+        args:
+          - name: service-name
+            value: reporting-and-analysis-service
+          - name: service-port
+            value: "8088"
+          - name: health-path
+            value: "/actuator/health/liveness"
+          - name: namespace
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+  template:
+    metadata:
+      labels:
+        app: reporting-and-analysis-service
+        type: backend-service
+    spec:
+      serviceAccountName: reporting-and-analysis-service-sa
+      containers:
+        - name: spring-boot
+          image: cso2/reporting-and-analysis-service:latest
+          ports:
+            - containerPort: 8088
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - configMapRef:
+                name: reporting-and-analysis-service-config
+            - secretRef:
+                name: reporting-and-analysis-service-secrets
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8088
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8088
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3

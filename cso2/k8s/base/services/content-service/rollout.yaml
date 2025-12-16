@@ -1,0 +1,76 @@
+# Argo Rollout for content-service
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: content-service
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: content-service
+  strategy:
+    canary:
+      canaryService: content-service-canary
+      stableService: content-service
+      trafficRouting:
+        istio:
+          virtualServices:
+            - name: cso2-api
+              routes:
+                - primary
+      steps:
+        - setWeight: 10
+        - pause: { duration: 1m }
+        - setWeight: 25
+        - pause: { duration: 1m }
+        - setWeight: 50
+        - pause: { duration: 2m }
+        - setWeight: 100
+      # Using liveness endpoint to avoid MongoDB dependency check in CI
+      analysis:
+        templates:
+          - templateName: canary-health-check
+        startingStep: 1
+        args:
+          - name: service-name
+            value: content-service
+          - name: service-port
+            value: "8086"
+          - name: health-path
+            value: "/actuator/health/liveness"
+          - name: namespace
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+  template:
+    metadata:
+      labels:
+        app: content-service
+        type: backend-service
+    spec:
+      serviceAccountName: content-service-sa
+      containers:
+        - name: spring-boot
+          image: cso2/content-service:latest
+          ports:
+            - containerPort: 8086
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: content-service-secrets
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8086
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8086
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3

@@ -1,0 +1,78 @@
+# Argo Rollout for support-service
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: support-service
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: support-service
+  strategy:
+    canary:
+      canaryService: support-service-canary
+      stableService: support-service
+      trafficRouting:
+        istio:
+          virtualServices:
+            - name: cso2-api
+              routes:
+                - primary
+      steps:
+        - setWeight: 10
+        - pause: { duration: 1m }
+        - setWeight: 25
+        - pause: { duration: 1m }
+        - setWeight: 50
+        - pause: { duration: 2m }
+        - setWeight: 100
+      # Using liveness endpoint to avoid DB/MongoDB dependency check in CI
+      analysis:
+        templates:
+          - templateName: canary-health-check
+        startingStep: 1
+        args:
+          - name: service-name
+            value: support-service
+          - name: service-port
+            value: "8085"
+          - name: health-path
+            value: "/actuator/health/liveness"
+          - name: namespace
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+  template:
+    metadata:
+      labels:
+        app: support-service
+        type: backend-service
+    spec:
+      serviceAccountName: support-service-sa
+      containers:
+        - name: spring-boot
+          image: cso2/support-service:latest
+          ports:
+            - containerPort: 8085
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - configMapRef:
+                name: support-service-config
+            - secretRef:
+                name: support-service-secrets
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8085
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8085
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3

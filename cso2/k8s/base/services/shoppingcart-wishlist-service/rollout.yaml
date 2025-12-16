@@ -1,0 +1,76 @@
+# Argo Rollout for shoppingcart-wishlist-service
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: shoppingcart-wishlist-service
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: shoppingcart-wishlist-service
+  strategy:
+    canary:
+      canaryService: shoppingcart-wishlist-service-canary
+      stableService: shoppingcart-wishlist-service
+      trafficRouting:
+        istio:
+          virtualServices:
+            - name: cso2-api
+              routes:
+                - primary
+      steps:
+        - setWeight: 10
+        - pause: { duration: 1m }
+        - setWeight: 25
+        - pause: { duration: 1m }
+        - setWeight: 50
+        - pause: { duration: 2m }
+        - setWeight: 100
+      # Using liveness endpoint to avoid MongoDB dependency check in CI
+      analysis:
+        templates:
+          - templateName: canary-health-check
+        startingStep: 1
+        args:
+          - name: service-name
+            value: shoppingcart-wishlist-service
+          - name: service-port
+            value: "8084"
+          - name: health-path
+            value: "/actuator/health/liveness"
+          - name: namespace
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+  template:
+    metadata:
+      labels:
+        app: shoppingcart-wishlist-service
+        type: backend-service
+    spec:
+      serviceAccountName: shoppingcart-wishlist-service-sa
+      containers:
+        - name: spring-boot
+          image: cso2/shoppingcart-wishlist-service:latest
+          ports:
+            - containerPort: 8084
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: shoppingcart-wishlist-service-secrets
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8084
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8084
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3

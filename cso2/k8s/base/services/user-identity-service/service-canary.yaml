@@ -1,0 +1,12 @@
+# Canary service for user-identity-service
+# Receives traffic during canary rollout for testing
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-identity-service-canary
+spec:
+  selector:
+    app: user-identity-service
+  ports:
+    - port: 8081
+      targetPort: 8081

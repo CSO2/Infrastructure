@@ -1,0 +1,79 @@
+# Argo Rollout for product-catalogue-service
+# Implements Canary deployment with automatic rollback on failure
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: product-catalogue-service
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: product-catalogue-service
+  strategy:
+    canary:
+      canaryService: product-catalogue-service-canary
+      stableService: product-catalogue-service
+      trafficRouting:
+        istio:
+          virtualServices:
+            - name: cso2-api
+              routes:
+                - primary
+      steps:
+        - setWeight: 10
+        - pause: { duration: 1m }
+        - setWeight: 25
+        - pause: { duration: 1m }
+        - setWeight: 50
+        - pause: { duration: 2m }
+        - setWeight: 100
+      # Using liveness endpoint to avoid MongoDB dependency check in CI
+      analysis:
+        templates:
+          - templateName: canary-health-check
+        startingStep: 1
+        args:
+          - name: service-name
+            value: product-catalogue-service
+          - name: service-port
+            value: "8082"
+          - name: health-path
+            value: "/actuator/health/liveness"
+          - name: namespace
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+  template:
+    metadata:
+      labels:
+        app: product-catalogue-service
+        type: backend-service
+    spec:
+      serviceAccountName: product-catalogue-service-sa
+      containers:
+        - name: spring-boot
+          image: cso2/product-catalogue-service:latest
+          ports:
+            - containerPort: 8082
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - configMapRef:
+                name: product-catalogue-service-config
+            - secretRef:
+                name: product-catalogue-service-secrets
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8082
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8082
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3
