@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reporting-and-analysis-service
+  labels:
+    app: reporting-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reporting-service
+  template:
+    metadata:
+      labels:
+        app: reporting-service
+    spec:
+      containers:
+      - name: reporting-service
+        image: cso2/reporting-and-analysis-service:latest
+        ports:
+        - containerPort: 8088
+        env:
+        - name: DB_HOST
+          value: "postgres"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reporting-and-analysis-service
+spec:
+  selector:
+    app: reporting-service
+  ports:
+  - protocol: TCP
+    port: 8088
+    targetPort: 8088
