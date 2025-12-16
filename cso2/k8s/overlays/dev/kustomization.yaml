@@ -227,8 +227,8 @@ images:
   newName: ghcr.io/cso2/reporting_and_analysis_service
   newTag: dev-54bf04f
 - name: cso2/shoppingcart-wishlist-service
-  newName: cso2/shoppingcart-wishlist-service
-  newTag: dev-065b8e6
+  newName: ghcr.io/cso2/shoppingcart_wishlist_service
+  newTag: dev-b4d8144
 - name: cso2/support-service
   newName: ghcr.io/cso2/support_service
   newTag: dev-5018bd8
