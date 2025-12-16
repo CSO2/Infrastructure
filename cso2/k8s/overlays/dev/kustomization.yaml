@@ -224,8 +224,8 @@ images:
   newName: ghcr.io/cso2/product_catalogue_service
   newTag: dev-b83f243
 - name: cso2/reporting-and-analysis-service
-  newName: cso2/reporting-and-analysis-service
-  newTag: dev-abd2180
+  newName: ghcr.io/cso2/reporting_and_analysis_service
+  newTag: dev-54bf04f
 - name: cso2/shoppingcart-wishlist-service
   newName: cso2/shoppingcart-wishlist-service
   newTag: dev-065b8e6
