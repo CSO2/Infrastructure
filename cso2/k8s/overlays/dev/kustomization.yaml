@@ -216,7 +216,7 @@ images:
   newTag: dev-3af9bdd
 - name: cso2/notifications-service
   newName: ghcr.io/cso2/notifications_service
-  newTag: dev-022669a
+  newTag: dev-480cdc5
 - name: cso2/order-service
   newName: ghcr.io/cso2/order_service
   newTag: dev-06ef413
