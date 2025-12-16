@@ -204,7 +204,7 @@ patches:
 images:
 - name: cso2/ai-service
   newName: ghcr.io/cso2/ai_service
-  newTag: dev-2ee9638
+  newTag: dev-0e7ab05
 - name: cso2/api-gateway
   newName: cso2/api-gateway
   newTag: dev-a351306
