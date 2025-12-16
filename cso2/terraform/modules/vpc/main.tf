@@ -160,6 +160,14 @@ resource "aws_security_group" "k8s_worker" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    description = "All traffic between worker nodes (pod networking)"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    self        = true
+  }
+
   tags = {
     Name = "${var.project_name}-worker-sg"
   }
