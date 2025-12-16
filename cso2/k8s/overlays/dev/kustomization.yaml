@@ -234,4 +234,4 @@ images:
   newTag: dev-2491316
 - name: cso2/user-identity-service
   newName: ghcr.io/cso2/user_identity_service
-  newTag: dev-dceba9d
+  newTag: dev-eef10b1
