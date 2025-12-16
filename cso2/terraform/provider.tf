@@ -7,10 +7,10 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "CHANGE_ME_TO_YOUR_BUCKET_NAME"
+    bucket         = "cso2-ecommerce-tf-state-239090154252-us-east-1"
     key            = "terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "CHANGE_ME_TO_YOUR_DYNAMODB_TABLE_NAME"
+    dynamodb_table = "cso2-ecommerce-tf-lock"
     encrypt        = true
   }
 }

@@ -34,10 +34,14 @@ for service_dir in */; do
         IMAGE_NAME="cso2/${service_name}"
         IMAGE_TAG="dev-${GIT_SHA}"
         IMAGE_TAGS["$IMAGE_NAME"]="$IMAGE_TAG"
-        
         (
             echo "Building ${IMAGE_NAME}:${IMAGE_TAG} from ${service_dir}"
-            docker build -t "${IMAGE_NAME}:${IMAGE_TAG}" "$service_dir"
+            if [[ "$service_name" == "frontend" ]]; then
+                NEXT_PUBLIC_API_URL=http://localhost
+                docker build --no-cache --build-arg NEXT_PUBLIC_API_URL="$NEXT_PUBLIC_API_URL" -t "${IMAGE_NAME}:${IMAGE_TAG}" "$service_dir"
+            else
+                docker build -t "${IMAGE_NAME}:${IMAGE_TAG}" "$service_dir"
+            fi
         ) &
     fi
 done

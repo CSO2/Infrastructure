@@ -13,6 +13,7 @@ spec:
         app: user-identity-service
         type: backend-service
     spec:
+      serviceAccountName: user-identity-service-sa
       containers:
       - name: spring-boot
         image: cso2/user-identity-service:latest

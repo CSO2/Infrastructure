@@ -13,6 +13,7 @@ spec:
         app: frontend
         type: frontend
     spec:
+      serviceAccountName: frontend-sa
       containers:
       - name: frontend
         image: cso2/frontend:latest

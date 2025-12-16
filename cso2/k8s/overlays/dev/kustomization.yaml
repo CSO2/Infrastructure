@@ -17,6 +17,7 @@ resources:
 - ../../base/services/support-service
 - ../../base/services/notifications-service
 - ../../base/services/reporting-and-analysis-service
+- ../../base/services/ai-service
 - istio
 
 configMapGenerator:
@@ -147,6 +148,12 @@ patches:
   target:
     kind: PersistentVolumeClaim
 - patch: |-
+    - op: add
+      path: /metadata/namespace
+      value: cso2-dev
+  target:
+    kind: ServiceAccount
+- patch: |-
     apiVersion: networking.istio.io/v1beta1
     kind: Gateway
     metadata:
@@ -203,7 +210,7 @@ images:
   newTag: dev-cb7c8d0
 - name: cso2/frontend
   newName: cso2/frontend
-  newTag: dev-152e8f4
+  newTag: dev-3af9bdd
 - name: cso2/notifications-service
   newName: cso2/notifications-service
   newTag: dev-75acc90

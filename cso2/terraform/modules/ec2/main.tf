@@ -25,12 +25,13 @@ resource "aws_instance" "control_plane" {
 
   tags = {
     Name = "${var.project_name}-control-plane-${count.index + 1}"
+    Project = var.project_name
     Role = "control-plane"
   }
 }
 
 resource "aws_instance" "worker" {
-  count                  = var.worker_count
+  count                  = 4
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = var.instance_type
   subnet_id              = var.subnet_ids[count.index % length(var.subnet_ids)]
@@ -40,6 +41,7 @@ resource "aws_instance" "worker" {
 
   tags = {
     Name = "${var.project_name}-worker-${count.index + 1}"
+    Project = var.project_name
     Role = "worker"
   }
 }

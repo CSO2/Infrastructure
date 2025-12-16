@@ -3,4 +3,9 @@ kind: Kustomization
 
 resources:
 - gateway.yaml
-# - request-authentication.yaml
+- request-authentication.yaml
+- authorization-policy.yaml
+- envoy-filter.yaml
+- peerauthentication.yaml
+- destination-rules.yaml
+- service-authorization.yaml

@@ -1,0 +1,109 @@
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: user-identity-service-mtls
+  namespace: cso2-dev
+spec:
+  host: user-identity-service.cso2-dev.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: product-catalogue-service-mtls
+  namespace: cso2-dev
+spec:
+  host: product-catalogue-service.cso2-dev.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: order-service-mtls
+  namespace: cso2-dev
+spec:
+  host: order-service.cso2-dev.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: shoppingcart-wishlist-service-mtls
+  namespace: cso2-dev
+spec:
+  host: shoppingcart-wishlist-service.cso2-dev.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: support-service-mtls
+  namespace: cso2-dev
+spec:
+  host: support-service.cso2-dev.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: content-service-mtls
+  namespace: cso2-dev
+spec:
+  host: content-service.cso2-dev.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: notifications-service-mtls
+  namespace: cso2-dev
+spec:
+  host: notifications-service.cso2-dev.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: reporting-and-analysis-service-mtls
+  namespace: cso2-dev
+spec:
+  host: reporting-and-analysis-service.cso2-dev.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: ai-service-mtls
+  namespace: cso2-dev
+spec:
+  host: ai-service.cso2-dev.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: frontend-mtls
+  namespace: cso2-dev
+spec:
+  host: frontend.cso2-dev.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
