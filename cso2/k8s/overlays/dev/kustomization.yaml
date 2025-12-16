@@ -210,7 +210,7 @@ images:
   newTag: dev-a351306
 - name: cso2/content-service
   newName: ghcr.io/cso2/content_service
-  newTag: dev-5ad4339
+  newTag: dev-a750718
 - name: cso2/frontend
   newName: cso2/frontend
   newTag: dev-3af9bdd
