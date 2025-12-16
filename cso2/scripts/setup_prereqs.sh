@@ -47,8 +47,14 @@ echo "Please ensure you have configured your AWS credentials using 'aws configur
 read -p "Do you want to set up Terraform backend (S3 & DynamoDB)? (y/n) " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    read -p "Enter AWS Region (default: us-east-1): " AWS_REGION
-    AWS_REGION=${AWS_REGION:-us-east-1}
+    read -p "Enter AWS Region (default: ap-southeast-1): " AWS_REGION
+    AWS_REGION=${AWS_REGION:-ap-southeast-1}
+
+    # Prevent deploying to US datacenter for this project
+    if [[ "$AWS_REGION" == "us-east-1" ]]; then
+        echo "Error: US datacenter (us-east-1) is not used for this project. Please choose ap-southeast-1 or another allowed region."
+        exit 1
+    fi
     
     read -p "Enter Project Name (default: cso2-ecommerce): " PROJECT_NAME
     PROJECT_NAME=${PROJECT_NAME:-cso2-ecommerce}

@@ -74,8 +74,8 @@ echo "Make sure AWS credentials are configured (aws configure / SSO / env vars).
 
 read -r -p "Set up Terraform backend (S3 + DynamoDB)? (y/n) " reply
 if [[ "${reply}" =~ ^[Yy]$ ]]; then
-  read -r -p "AWS Region (default: us-east-1): " AWS_REGION
-  AWS_REGION="${AWS_REGION:-us-east-1}"
+  read -r -p "AWS Region (default: ap-southeast-1): " AWS_REGION
+  AWS_REGION="${AWS_REGION:-ap-southeast-1}"
 
   read -r -p "Project Name (default: cso2-ecommerce): " PROJECT_NAME
   PROJECT_NAME="${PROJECT_NAME:-cso2-ecommerce}"
@@ -85,12 +85,15 @@ if [[ "${reply}" =~ ^[Yy]$ ]]; then
   TABLE_NAME="${PROJECT_NAME}-tf-lock"
 
   echo "Creating S3 bucket: ${BUCKET_NAME}..."
+  # Disallow deploying to US datacenter
   if [[ "${AWS_REGION}" == "us-east-1" ]]; then
-    aws s3api create-bucket --bucket "${BUCKET_NAME}" --region "${AWS_REGION}" >/dev/null
-  else
-    aws s3api create-bucket --bucket "${BUCKET_NAME}" --region "${AWS_REGION}" \
-      --create-bucket-configuration "LocationConstraint=${AWS_REGION}" >/dev/null
+    echo "Error: US datacenter (us-east-1) is not used for this project. Please choose ap-southeast-1 or another allowed region."
+    exit 1
   fi
+
+  # Create S3 bucket (non us-east-1 regions require LocationConstraint)
+  aws s3api create-bucket --bucket "${BUCKET_NAME}" --region "${AWS_REGION}" \
+    --create-bucket-configuration "LocationConstraint=${AWS_REGION}" >/dev/null
 
   echo "Applying bucket security defaults..."
   aws s3api put-public-access-block --bucket "${BUCKET_NAME}" \
