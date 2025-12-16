@@ -231,7 +231,7 @@ images:
   newTag: dev-b4d8144
 - name: cso2/support-service
   newName: ghcr.io/cso2/support_service
-  newTag: dev-5018bd8
+  newTag: dev-cadd413
 - name: cso2/user-identity-service
   newName: ghcr.io/cso2/user_identity_service
   newTag: dev-dceba9d
