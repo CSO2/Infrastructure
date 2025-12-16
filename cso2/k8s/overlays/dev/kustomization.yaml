@@ -221,8 +221,8 @@ images:
   newName: cso2/order-service
   newTag: dev-c39ca1e
 - name: cso2/product-catalogue-service
-  newName: cso2/product-catalogue-service
-  newTag: dev-2c4e7ec
+  newName: ghcr.io/cso2/product_catalogue_service
+  newTag: dev-b83f243
 - name: cso2/reporting-and-analysis-service
   newName: cso2/reporting-and-analysis-service
   newTag: dev-abd2180
