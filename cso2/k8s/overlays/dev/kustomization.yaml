@@ -230,8 +230,8 @@ images:
   newName: cso2/shoppingcart-wishlist-service
   newTag: dev-065b8e6
 - name: cso2/support-service
-  newName: cso2/support-service
-  newTag: dev-3e2b8bf
+  newName: ghcr.io/cso2/support_service
+  newTag: dev-5018bd8
 - name: cso2/user-identity-service
   newName: cso2/user-identity-service
   newTag: dev-ba71dcd
