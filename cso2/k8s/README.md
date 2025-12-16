@@ -163,6 +163,64 @@ spec:
   jwtRules:
   - issuer: "cso2-user-identity-service"
     jwksUri: "http://user-identity-service.cso2-dev.svc.cluster.local:8081/.well-known/jwks.json"
+
+## Canary Deployments (Argo Rollouts)
+
+This infrastructure uses **Argo Rollouts** for progressive delivery with automatic rollback.
+
+### Deployment Strategy
+
+All services use a **Canary deployment strategy** with the following traffic progression:
+1. **10%** traffic → Canary pods (1 minute pause)
+2. **25%** traffic → Canary pods (1 minute pause)
+3. **50%** traffic → Canary pods (2 minutes pause)
+4. **100%** traffic → Full rollout complete
+
+### Health-Based Automatic Rollback
+
+Each rollout includes an **AnalysisTemplate** that:
+- Checks `/actuator/health` endpoint every 30 seconds
+- Runs 5 health checks during rollout
+- Fails after 2 consecutive failures
+- **Automatically rolls back** on failure
+
+### Managing Rollouts
+
+```bash
+# Install Argo Rollouts kubectl plugin (required)
+kubectl argo rollouts version || \
+  curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64 && \
+  chmod +x kubectl-argo-rollouts-linux-amd64 && \
+  sudo mv kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
+
+# Watch rollout status
+kubectl argo rollouts get rollout user-identity-service -n cso2-dev --watch
+
+# List all rollouts
+kubectl argo rollouts list rollouts -n cso2-dev
+
+# Promote a paused rollout to next step
+kubectl argo rollouts promote user-identity-service -n cso2-dev
+
+# Skip all remaining steps (full promotion)
+kubectl argo rollouts promote user-identity-service -n cso2-dev --full
+
+# Abort a rollout (triggers rollback)
+kubectl argo rollouts abort user-identity-service -n cso2-dev
+
+# Manual rollback to previous version
+kubectl argo rollouts undo user-identity-service -n cso2-dev
+
+# View rollout history
+kubectl argo rollouts history user-identity-service -n cso2-dev
+```
+
+### Rollout Dashboard
+
+```bash
+# Open Argo Rollouts dashboard
+kubectl argo rollouts dashboard -n argo-rollouts
+# Access at http://localhost:3100
 ```
 
 ## Troubleshooting
@@ -171,11 +229,17 @@ spec:
 # Preview generated manifests
 kubectl kustomize overlays/dev
 
+# Check rollout status
+kubectl argo rollouts get rollout user-identity-service -n cso2-dev
+
 # Check pod logs
 kubectl logs -n cso2-dev deployment/content-service
 
 # Debug secrets
 kubectl get secret -n cso2-dev app-secrets -o yaml
+
+# Check analysis run status (for rollback debugging)
+kubectl get analysisrun -n cso2-dev
 
 # Delete everything
 kubectl delete -k overlays/dev

@@ -3,6 +3,10 @@ kind: Kustomization
 
 # Bases are the same, through patches we add the things needed for prod
 resources:
+# Argo Rollouts for Canary deployments
+- ../../base/infrastructure/argo-rollouts
+- ../../base/rollouts
+# Infrastructure
 - ../../base/infrastructure/mongodb
 - ../../base/infrastructure/postgresql
 - ../../base/infrastructure/redis
@@ -21,6 +25,22 @@ resources:
 - ../../base/services/reporting-and-analysis-service
 - ../../base/services/ai-service
 - istio
+
+# Namespace patches for Argo Rollouts CRDs
+patches:
+- patch: |-
+    - op: add
+      path: /metadata/namespace
+      value: cso2-prod
+  target:
+    kind: Rollout
+- patch: |-
+    - op: add
+      path: /metadata/namespace
+      value: cso2-prod
+  target:
+    kind: AnalysisTemplate
+
 images:
 - name: cso2/ai-service
   newName: ghcr.io/cso2/ai_service
