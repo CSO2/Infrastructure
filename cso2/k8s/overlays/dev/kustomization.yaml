@@ -219,7 +219,7 @@ images:
   newTag: dev-480cdc5
 - name: cso2/order-service
   newName: ghcr.io/cso2/order_service
-  newTag: dev-06ef413
+  newTag: dev-d60330d
 - name: cso2/product-catalogue-service
   newName: ghcr.io/cso2/product_catalogue_service
   newTag: dev-b31e862
