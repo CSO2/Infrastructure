@@ -215,8 +215,8 @@ images:
   newName: cso2/frontend
   newTag: dev-3af9bdd
 - name: cso2/notifications-service
-  newName: cso2/notifications-service
-  newTag: dev-75acc90
+  newName: ghcr.io/cso2/notifications_service
+  newTag: dev-022669a
 - name: cso2/order-service
   newName: cso2/order-service
   newTag: dev-c39ca1e
