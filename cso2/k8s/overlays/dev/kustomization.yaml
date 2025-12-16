@@ -209,8 +209,8 @@ images:
   newName: cso2/api-gateway
   newTag: dev-a351306
 - name: cso2/content-service
-  newName: cso2/content-service
-  newTag: dev-cb7c8d0
+  newName: ghcr.io/cso2/content_service
+  newTag: dev-5ad4339
 - name: cso2/frontend
   newName: cso2/frontend
   newTag: dev-3af9bdd
