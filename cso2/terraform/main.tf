@@ -26,5 +26,5 @@ module "ec2" {
   iam_instance_profile_name = module.iam.iam_instance_profile_name
   key_name                  = var.key_name
   control_plane_count       = 1
-  worker_count              = 2
+  worker_count              = 6
 }

@@ -1,0 +1,64 @@
+---
+# Prometheus and Grafana installation using kube-prometheus-stack via Helm
+
+- name: Create monitoring namespace
+  ansible.builtin.shell: |
+    kubectl create namespace {{ monitoring_namespace }} --dry-run=client -o yaml | kubectl apply -f -
+  become: no
+  changed_when: true
+
+- name: Check if Helm is installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/helm
+  register: helm_installed
+
+- name: Install Helm
+  ansible.builtin.shell: |
+    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  when: not helm_installed.stat.exists
+  become: yes
+
+- name: Add Prometheus Helm repository
+  ansible.builtin.shell: |
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    helm repo update
+  become: no
+  changed_when: true
+
+- name: Install kube-prometheus-stack
+  ansible.builtin.shell: |
+    helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
+      --namespace {{ monitoring_namespace }} \
+      --set grafana.adminPassword={{ grafana_admin_password }} \
+      --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
+      --set alertmanager.enabled=false \
+      --wait --timeout 600s
+  become: no
+  changed_when: true
+
+- name: Wait for Prometheus to be ready
+  ansible.builtin.shell: |
+    kubectl -n {{ monitoring_namespace }} rollout status statefulset/prometheus-prometheus-kube-prometheus-prometheus --timeout=300s
+  become: no
+  register: prometheus_rollout
+  retries: 3
+  delay: 30
+  until: prometheus_rollout.rc == 0
+  ignore_errors: yes
+
+- name: Wait for Grafana to be ready
+  ansible.builtin.shell: |
+    kubectl -n {{ monitoring_namespace }} rollout status deployment/prometheus-grafana --timeout=300s
+  become: no
+  register: grafana_rollout
+  retries: 3
+  delay: 30
+  until: grafana_rollout.rc == 0
+
+- name: Display monitoring access info
+  ansible.builtin.debug:
+    msg: |
+      Prometheus: http://prometheus.cso2.randitha.net
+      Grafana: http://grafana.cso2.randitha.net
+      Grafana Username: admin
+      Grafana Password: {{ grafana_admin_password }}

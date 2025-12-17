@@ -46,3 +46,23 @@ resource "aws_instance" "worker" {
     Role = "worker"
   }
 }
+
+# Elastic IP for Control Plane - Makes the public IP permanent
+# This ensures DNS records pointing to this IP remain valid after instance restarts
+resource "aws_eip" "control_plane" {
+  count  = var.control_plane_count
+  domain = "vpc"
+
+  tags = {
+    Name    = "${var.project_name}-control-plane-eip-${count.index + 1}"
+    Project = var.project_name
+    Role    = "control-plane"
+  }
+}
+
+# Associate Elastic IP with Control Plane instance
+resource "aws_eip_association" "control_plane" {
+  count         = var.control_plane_count
+  instance_id   = aws_instance.control_plane[count.index].id
+  allocation_id = aws_eip.control_plane[count.index].id
+}

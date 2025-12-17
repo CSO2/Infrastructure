@@ -1,0 +1,4 @@
+---
+monitoring_namespace: "monitoring"
+prometheus_version: "v2.47.2"
+grafana_admin_password: "admin123"

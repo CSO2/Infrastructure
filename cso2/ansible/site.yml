@@ -9,6 +9,8 @@
   roles:
     - control_plane
     - opensearch
+    - argocd
+    - monitoring
 
 - hosts: role_worker
   become: yes

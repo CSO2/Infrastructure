@@ -13,3 +13,9 @@ output "control_plane_private_ips" {
 output "worker_private_ips" {
   value = aws_instance.worker[*].private_ip
 }
+
+# Elastic IP addresses for control plane (permanent public IPs)
+output "control_plane_elastic_ips" {
+  description = "Elastic IP addresses for control plane instances - these are permanent"
+  value       = aws_eip.control_plane[*].public_ip
+}
