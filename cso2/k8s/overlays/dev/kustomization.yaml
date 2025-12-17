@@ -12,6 +12,7 @@ resources:
 - ../../base/infrastructure/kafka
 - ../../base/infrastructure/rabbitmq
 - ../../base/infrastructure/opensearch
+- ../../base/infrastructure/cert-manager
 - ../../base/istio-config
 - ../../base/frontend
 - ../../base/services/content-service
@@ -23,6 +24,7 @@ resources:
 - ../../base/services/notifications-service
 - ../../base/services/reporting-and-analysis-service
 - ../../base/services/ai-service
+- ../../base/services/api-gateway
 - istio
 
 configMapGenerator:
@@ -79,12 +81,26 @@ configMapGenerator:
   - KAFKA_CONSUMER_AUTO_OFFSET_RESET=earliest
   - MAIL_HOST=smtp.gmail.com
   - MAIL_PORT=587
+  - MAIL_USERNAME=bharkula3dev@gmail.com
+  - MAIL_PASSWORD=orubjnxgkjlonuqq
+  - ADMIN_EMAIL=bharkula3dev@gmail.com
   name: notifications-service-config
 - behavior: create
   literals:
   - SERVER_PORT=8088
   - DATABASE_URL=jdbc:postgresql://postgresql:5432/cso2_reporting_service
   name: reporting-and-analysis-service-config
+# Frontend configuration with external API URLs for client-side calls
+- behavior: create
+  literals:
+  - NEXT_PUBLIC_API_URL=https://dev.api.cso2.randitha.net
+  - NEXT_PUBLIC_FRONTEND_URL=https://dev.cso2.randitha.net
+  name: frontend-config
+# API Gateway configuration
+- behavior: create
+  literals:
+  - FRONTEND_ORIGINS=https://dev.cso2.randitha.net,https://cso2.randitha.net
+  name: api-gateway-config
 
 secretGenerator:
 - envs:
@@ -120,6 +136,10 @@ secretGenerator:
 - envs:
   - .env.reporting-and-analysis-service
   name: reporting-and-analysis-service-secrets
+# API Gateway secrets - JWT secret for token validation
+- literals:
+  - JWT_SECRET=VerySecretJwtKeyForDevelopmentChangeThis
+  name: api-gateway-secrets
 
 patches:
 # Argo Rollouts namespace patches

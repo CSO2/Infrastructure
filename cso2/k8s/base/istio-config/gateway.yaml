@@ -7,9 +7,50 @@ spec:
   selector:
     istio: ingress
   servers:
+  # HTTPS for production domains
+  - port:
+      number: 443
+      name: https-prod
+      protocol: HTTPS
+    hosts:
+    - "cso2.randitha.net"
+    - "api.cso2.randitha.net"
+    tls:
+      mode: SIMPLE
+      credentialName: cso2-prod-tls
+  # HTTPS for dev domains
+  - port:
+      number: 443
+      name: https-dev
+      protocol: HTTPS
+    hosts:
+    - "dev.cso2.randitha.net"
+    - "dev.api.cso2.randitha.net"
+    tls:
+      mode: SIMPLE
+      credentialName: cso2-dev-tls
+  # HTTPS for tools
+  - port:
+      number: 443
+      name: https-tools
+      protocol: HTTPS
+    hosts:
+    - "argocd.cso2.randitha.net"
+    - "opensearch.cso2.randitha.net"
+    tls:
+      mode: SIMPLE
+      credentialName: cso2-tools-tls
+  # HTTP with redirect to HTTPS
   - port:
       number: 80
       name: http
       protocol: HTTP
     hosts:
-    - "*"
+    - "cso2.randitha.net"
+    - "api.cso2.randitha.net"
+    - "dev.cso2.randitha.net"
+    - "dev.api.cso2.randitha.net"
+    - "argocd.cso2.randitha.net"
+    - "opensearch.cso2.randitha.net"
+    tls:
+      httpsRedirect: true

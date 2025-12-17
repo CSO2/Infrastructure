@@ -43,26 +43,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: cso2-singapore
-  namespace: argocd
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/CSO2/Infrastructure.git
-    targetRevision: singapore
-    path: cso2/k8s/overlays/singapore
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: cso2-singapore
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
+

@@ -1,0 +1,44 @@
+# Certificates for cso2.randitha.net domains
+# These will be automatically provisioned by cert-manager using Let's Encrypt
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cso2-prod-tls
+  namespace: istio-ingress
+spec:
+  secretName: cso2-prod-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - cso2.randitha.net
+  - api.cso2.randitha.net
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cso2-dev-tls
+  namespace: istio-ingress
+spec:
+  secretName: cso2-dev-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - dev.cso2.randitha.net
+  - dev.api.cso2.randitha.net
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cso2-tools-tls
+  namespace: istio-ingress
+spec:
+  secretName: cso2-tools-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - argocd.cso2.randitha.net
+  - opensearch.cso2.randitha.net

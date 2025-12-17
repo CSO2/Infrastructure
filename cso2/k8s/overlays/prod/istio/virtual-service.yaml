@@ -1,13 +1,13 @@
-# Dev VirtualService - Routes all API traffic through api-gateway
+# Production VirtualService - Routes all API traffic through api-gateway
 apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
   name: cso2-api
-  namespace: cso2-dev
+  namespace: cso2-prod
 spec:
   hosts:
-  - "dev.cso2.randitha.net"
-  - "dev.api.cso2.randitha.net"
+  - "cso2.randitha.net"
+  - "api.cso2.randitha.net"
   gateways:
   - istio-ingress/cso2-gateway
   http:
@@ -15,17 +15,17 @@ spec:
   - match:
     - headers:
         ":authority":
-          exact: "dev.api.cso2.randitha.net"
+          exact: "api.cso2.randitha.net"
       uri:
         prefix: /api/
     route:
     - destination:
-        host: api-gateway.cso2-dev.svc.cluster.local
+        host: api-gateway.cso2-prod.svc.cluster.local
         port:
           number: 8080
     corsPolicy:
       allowOrigins:
-      - exact: "https://dev.cso2.randitha.net"
+      - exact: "https://cso2.randitha.net"
       allowMethods:
       - GET
       - POST
@@ -41,30 +41,30 @@ spec:
   - match:
     - headers:
         ":authority":
-          exact: "dev.api.cso2.randitha.net"
+          exact: "api.cso2.randitha.net"
       uri:
         exact: /healthz
     route:
     - destination:
-        host: api-gateway.cso2-dev.svc.cluster.local
+        host: api-gateway.cso2-prod.svc.cluster.local
         port:
           number: 8080
 
-  # Frontend route - dev.cso2.randitha.net
+  # Frontend route - cso2.randitha.net
   - match:
     - headers:
         ":authority":
-          exact: "dev.cso2.randitha.net"
+          exact: "cso2.randitha.net"
       uri:
         prefix: /
     route:
     - destination:
-        host: frontend.cso2-dev.svc.cluster.local
+        host: frontend.cso2-prod.svc.cluster.local
         port:
           number: 3000
     corsPolicy:
       allowOrigins:
-      - exact: "https://dev.cso2.randitha.net"
+      - exact: "https://cso2.randitha.net"
       allowMethods:
       - GET
       - POST

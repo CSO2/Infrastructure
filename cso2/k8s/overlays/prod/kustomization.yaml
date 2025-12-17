@@ -1,7 +1,9 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Bases are the same, through patches we add the things needed for prod
+# Production overlay - Singapore region deployment
+namespace: cso2-prod
+
 resources:
 # Argo Rollouts for Canary deployments
 - ../../base/infrastructure/argo-rollouts
@@ -13,6 +15,7 @@ resources:
 - ../../base/infrastructure/kafka
 - ../../base/infrastructure/rabbitmq
 - ../../base/infrastructure/opensearch
+- ../../base/infrastructure/cert-manager
 - ../../base/istio-config
 - ../../base/frontend
 - ../../base/services/content-service
@@ -24,10 +27,125 @@ resources:
 - ../../base/services/notifications-service
 - ../../base/services/reporting-and-analysis-service
 - ../../base/services/ai-service
+- ../../base/services/api-gateway
 - istio
 
-# Namespace patches for Argo Rollouts CRDs
+configMapGenerator:
+- behavior: create
+  literals:
+  - POSTGRES_DB=postgres
+  name: postgresql-config
+- literals:
+  - REDIS_HOST=redis
+  - REDIS_PORT=6379
+  - KAFKA_BOOTSTRAP_SERVERS=kafka-broker:9092
+  - RABBITMQ_HOST=rabbitmq
+  - RABBITMQ_PORT=5672
+  - DATABASE_USERNAME=cso2
+  name: app-config
+- literals:
+  - SERVER_PORT=8081
+  - DATABASE_URL=jdbc:postgresql://postgresql:5432/cso2_user_identity
+  - DATABASE_USERNAME=cso2
+  - JWT_EXPIRATION="86400000"
+  - JWT_REFRESH_EXPIRATION="604800000"
+  name: user-identity-service-config
+- literals:
+  - SERVER_PORT=8082
+  name: product-catalogue-service-config
+- literals:
+  - SERVER_PORT=8083
+  - DATABASE_URL=jdbc:postgresql://postgresql:5432/cso2_order_service
+  - JPA_SHOW_SQL=false
+  - CATALOG_SERVICE_URL=http://product-catalogue-service:8082
+  - CART_SERVICE_URL=http://shoppingcart-wishlist-service:8084
+  name: order-service-config
+- literals:
+  - SERVER_PORT=8084
+  - REDIS_HOST=redis
+  - REDIS_PORT=6379
+  - CATALOG_SERVICE_URL=http://product-catalogue-service:8082
+  name: shoppingcart-wishlist-service-config
+- literals:
+  - SERVER_PORT=8085
+  - DATABASE_URL=jdbc:postgresql://postgresql:5432/cso2_support_service
+  - ORDER_SERVICE_URL=http://order-service:8083
+  name: support-service-config
+- behavior: create
+  literals:
+  - SERVER_PORT=8086
+  - MONGODB_DATABASE=CSO2_content_service
+  name: content-service-config
+- behavior: create
+  literals:
+  - SERVER_PORT=8087
+  - KAFKA_BOOTSTRAP_SERVERS=kafka-broker:9092
+  - KAFKA_CONSUMER_GROUP_ID=notification-group
+  - KAFKA_CONSUMER_AUTO_OFFSET_RESET=earliest
+  - MAIL_HOST=smtp.gmail.com
+  - MAIL_PORT=587
+  - MAIL_USERNAME=bharkula3dev@gmail.com
+  - MAIL_PASSWORD=orubjnxgkjlonuqq
+  - ADMIN_EMAIL=bharkula3dev@gmail.com
+  name: notifications-service-config
+- behavior: create
+  literals:
+  - SERVER_PORT=8088
+  - DATABASE_URL=jdbc:postgresql://postgresql:5432/cso2_reporting_service
+  name: reporting-and-analysis-service-config
+# Frontend configuration with external API URLs for client-side calls
+- behavior: create
+  literals:
+  - NEXT_PUBLIC_API_URL=https://api.cso2.randitha.net
+  - NEXT_PUBLIC_FRONTEND_URL=https://cso2.randitha.net
+  name: frontend-config
+# API Gateway configuration
+- behavior: create
+  literals:
+  - FRONTEND_ORIGINS=https://cso2.randitha.net,https://dev.cso2.randitha.net
+  name: api-gateway-config
+
+secretGenerator:
+- envs:
+  - .env.redis
+  name: redis-secrets
+- envs:
+  - .env.postgresql
+  name: postgresql-secrets
+- envs:
+  - .env.mongodb
+  name: mongodb-secrets
+- envs:
+  - .env.user-identity-service
+  name: user-identity-service-secrets
+- envs:
+  - .env.product-catalogue-service
+  name: product-catalogue-service-secrets
+- envs:
+  - .env.order-service
+  name: order-service-secrets
+- envs:
+  - .env.shoppingcart-wishlist-service
+  name: shoppingcart-wishlist-service-secrets
+- envs:
+  - .env.support-service
+  name: support-service-secrets
+- envs:
+  - .env.content-service
+  name: content-service-secrets
+- envs:
+  - .env.notifications-service
+  name: notifications-service-secrets
+- envs:
+  - .env.reporting-and-analysis-service
+  name: reporting-and-analysis-service-secrets
+# API Gateway secrets - JWT secret for token validation
+- literals:
+  - JWT_SECRET=VerySecretJwtKeyForProductionChangeThis
+  name: api-gateway-secrets
+
 patches:
+# Argo Rollouts namespace patches
 - patch: |-
     - op: add
       path: /metadata/namespace
@@ -40,7 +158,94 @@ patches:
       value: cso2-prod
   target:
     kind: AnalysisTemplate
+# Standard Kubernetes resources
+- patch: |-
+    - op: add
+      path: /metadata/namespace
+      value: cso2-prod
+  target:
+    kind: Deployment
+- patch: |-
+    - op: add
+      path: /metadata/namespace
+      value: cso2-prod
+  target:
+    kind: Service
+- patch: |-
+    - op: add
+      path: /metadata/namespace
+      value: cso2-prod
+  target:
+    kind: ConfigMap
+- patch: |-
+    - op: add
+      path: /metadata/namespace
+      value: cso2-prod
+  target:
+    kind: Secret
+- patch: |-
+    - op: add
+      path: /metadata/namespace
+      value: cso2-prod
+  target:
+    kind: PersistentVolumeClaim
+- patch: |-
+    - op: add
+      path: /metadata/namespace
+      value: cso2-prod
+  target:
+    kind: ServiceAccount
+- patch: |-
+    apiVersion: networking.istio.io/v1beta1
+    kind: Gateway
+    metadata:
+      name: cso2-gateway
+      namespace: istio-ingress
+  target:
+    kind: Gateway
+    name: cso2-gateway
+# Production resources - higher limits for Singapore region
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/resources
+      value:
+        requests:
+          memory: "256Mi"
+          cpu: "200m"
+        limits:
+          memory: "512Mi"
+          cpu: "500m"
+  target:
+    kind: Deployment
+    labelSelector: type=backend-service
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/resources
+      value:
+        requests:
+          memory: "256Mi"
+          cpu: "200m"
+        limits:
+          memory: "512Mi"
+          cpu: "500m"
+  target:
+    kind: Deployment
+    labelSelector: type=backend-infra
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/resources
+      value:
+        requests:
+          memory: "256Mi"
+          cpu: "200m"
+        limits:
+          memory: "512Mi"
+          cpu: "500m"
+  target:
+    kind: Deployment
+    labelSelector: type=frontend
 
+# Image tags - uses main branch images for production
 images:
 - name: cso2/ai-service
   newName: ghcr.io/cso2/ai_service
