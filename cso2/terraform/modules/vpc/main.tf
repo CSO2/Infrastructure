@@ -120,6 +120,15 @@ resource "aws_security_group" "k8s_control_plane" {
     cidr_blocks = ["0.0.0.0/0"] # Restrict this
   }
 
+  # Calico VXLAN overlay networking between nodes
+  ingress {
+    description = "VXLAN for Calico"
+    from_port   = 4789
+    to_port     = 4789
+    protocol    = "udp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -176,6 +185,15 @@ resource "aws_security_group" "k8s_worker" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Calico VXLAN overlay networking between nodes
+  ingress {
+    description = "VXLAN for Calico"
+    from_port   = 4789
+    to_port     = 4789
+    protocol    = "udp"
+    cidr_blocks = [var.vpc_cidr]
   }
 
   ingress {
