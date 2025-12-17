@@ -1,0 +1,62 @@
+---
+# OpenSearch Configuration Tasks
+
+- name: Create OpenSearch configuration file
+  template:
+    src: opensearch.yml.j2
+    dest: "{{ opensearch_home }}/config/opensearch.yml"
+    owner: "{{ opensearch_user }}"
+    group: "{{ opensearch_group }}"
+    mode: '0640'
+  notify: restart opensearch
+
+- name: Configure JVM options
+  template:
+    src: jvm.options.j2
+    dest: "{{ opensearch_home }}/config/jvm.options"
+    owner: "{{ opensearch_user }}"
+    group: "{{ opensearch_group }}"
+    mode: '0640'
+  notify: restart opensearch
+
+- name: Create OpenSearch systemd service file
+  template:
+    src: opensearch.service.j2
+    dest: /etc/systemd/system/opensearch.service
+    mode: '0644'
+  notify:
+    - reload systemd
+    - restart opensearch
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+
+- name: Enable and start OpenSearch service
+  systemd:
+    name: opensearch
+    enabled: yes
+    state: started
+
+- name: Wait for OpenSearch to start
+  wait_for:
+    host: "{{ ansible_host }}"
+    port: "{{ opensearch_http_port }}"
+    delay: 10
+    timeout: 120
+    state: started
+
+- name: Check OpenSearch cluster health
+  uri:
+    url: "https://{{ ansible_host }}:{{ opensearch_http_port }}/_cluster/health"
+    method: GET
+    user: admin
+    password: "{{ opensearch_admin_password }}"
+    force_basic_auth: yes
+    validate_certs: no
+    return_content: yes
+  register: cluster_health
+  until: cluster_health.json.status == "green" or cluster_health.json.status == "yellow"
+  retries: 30
+  delay: 10
+  run_once: true

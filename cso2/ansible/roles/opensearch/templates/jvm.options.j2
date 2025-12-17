@@ -1,0 +1,34 @@
+## JVM configuration for OpenSearch
+
+################################################################
+## IMPORTANT: JVM heap size
+################################################################
+-Xms{{ opensearch_heap_size }}
+-Xmx{{ opensearch_heap_size }}
+
+################################################################
+## Expert settings
+################################################################
+
+## GC configuration
+-XX:+UseG1GC
+-XX:G1ReservePercent=25
+-XX:InitiatingHeapOccupancyPercent=30
+
+## DNS cache policy
+-Des.networkaddress.cache.ttl=60
+-Des.networkaddress.cache.negative.ttl=10
+
+## JVM options
+-XX:+HeapDumpOnOutOfMemoryError
+-XX:HeapDumpPath={{ opensearch_log_dir }}
+-XX:ErrorFile={{ opensearch_log_dir }}/hs_err_pid%p.log
+
+## JDK 9+ GC logging
+-Xlog:gc*,gc+age=trace,safepoint:file={{ opensearch_log_dir }}/gc.log:utctime,pid,tags:filecount=32,filesize=64m
+
+## Temp directory
+-Djava.io.tmpdir=/tmp
+
+## Fix for log4j vulnerability
+-Dlog4j2.formatMsgNoLookups=true

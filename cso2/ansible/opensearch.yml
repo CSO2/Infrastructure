@@ -1,0 +1,64 @@
+---
+# OpenSearch Deployment Playbook
+# Deploys a 3-node OpenSearch cluster for centralized logging
+#
+# Usage:
+#   ansible-playbook -i inventory/opensearch_hosts.yml opensearch.yml
+#   ansible-playbook -i inventory/opensearch_hosts.yml opensearch.yml --tags "install"
+#   ansible-playbook -i inventory/opensearch_hosts.yml opensearch.yml --tags "configure"
+
+- name: Deploy OpenSearch Cluster
+  hosts: opensearch
+  become: yes
+  gather_facts: yes
+  
+  vars_files:
+    - vars/opensearch_vars.yml
+
+  pre_tasks:
+    - name: Display deployment information
+      debug:
+        msg: |
+          =====================================================
+          OpenSearch Cluster Deployment
+          =====================================================
+          Cluster Name: {{ opensearch_cluster_name }}
+          Version: {{ opensearch_version }}
+          Nodes: {{ groups['opensearch'] | length }}
+          Target Hosts: {{ groups['opensearch'] | join(', ') }}
+          =====================================================
+      run_once: true
+
+    - name: Verify minimum requirements
+      assert:
+        that:
+          - ansible_memtotal_mb >= 2048
+          - ansible_processor_vcpus >= 2
+        fail_msg: "Host does not meet minimum requirements (2GB RAM, 2 vCPUs)"
+        success_msg: "Host meets minimum requirements"
+
+  roles:
+    - role: opensearch
+      tags:
+        - opensearch
+
+  post_tasks:
+    - name: Display cluster information
+      debug:
+        msg: |
+          =====================================================
+          OpenSearch Deployment Complete!
+          =====================================================
+          
+          Cluster Health Check:
+          curl -k -u admin:{{ opensearch_admin_password }} https://{{ ansible_host }}:9200/_cluster/health?pretty
+          
+          OpenSearch URL: https://{{ ansible_host }}:{{ opensearch_http_port }}
+          Dashboards URL: http://{{ hostvars[groups['opensearch'][0]]['ansible_host'] }}:{{ opensearch_dashboards_port }}
+          
+          Credentials:
+          Username: admin
+          Password: {{ opensearch_admin_password }}
+          
+          =====================================================
+      run_once: true

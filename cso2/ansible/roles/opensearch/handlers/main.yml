@@ -1,0 +1,18 @@
+---
+# Handlers for OpenSearch Role
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
+
+- name: restart opensearch
+  systemd:
+    name: opensearch
+    state: restarted
+    enabled: yes
+
+- name: restart opensearch-dashboards
+  systemd:
+    name: opensearch-dashboards
+    state: restarted
+    enabled: yes

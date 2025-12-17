@@ -1,0 +1,45 @@
+---
+# OpenSearch version and package settings
+opensearch_version: "2.11.1"
+opensearch_download_url: "https://artifacts.opensearch.org/releases/bundle/opensearch/{{ opensearch_version }}/opensearch-{{ opensearch_version }}-linux-x64.tar.gz"
+opensearch_dashboards_version: "2.11.1"
+opensearch_dashboards_download_url: "https://artifacts.opensearch.org/releases/bundle/opensearch-dashboards/{{ opensearch_dashboards_version }}/opensearch-dashboards-{{ opensearch_dashboards_version }}-linux-x64.tar.gz"
+
+# Installation paths
+opensearch_home: "/opt/opensearch"
+opensearch_data_dir: "/var/lib/opensearch"
+opensearch_log_dir: "/var/log/opensearch"
+opensearch_dashboards_home: "/opt/opensearch-dashboards"
+
+# User and group
+opensearch_user: "opensearch"
+opensearch_group: "opensearch"
+
+# Cluster settings
+opensearch_cluster_name: "ecommerce-logs"
+opensearch_node_name: "{{ inventory_hostname }}"
+opensearch_http_port: 9200
+opensearch_transport_port: 9300
+
+# Network settings
+opensearch_network_host: "0.0.0.0"
+opensearch_discovery_seed_hosts: "{{ groups['opensearch'] | map('extract', hostvars, ['ansible_host']) | list }}"
+opensearch_cluster_initial_master_nodes: "{{ groups['opensearch'] | map('extract', hostvars, ['inventory_hostname']) | list }}"
+
+# Memory settings (adjust based on your instance size)
+opensearch_heap_size: "1g"
+
+# Security settings
+opensearch_security_enabled: true
+opensearch_admin_password: "Admin@123!"  # Change in production - use vault
+
+# Dashboards settings
+opensearch_dashboards_port: 5601
+opensearch_dashboards_host: "0.0.0.0"
+
+# Index settings
+opensearch_number_of_shards: 1
+opensearch_number_of_replicas: 1
+
+# Retention settings (days)
+opensearch_log_retention_days: 30

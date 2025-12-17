@@ -1,0 +1,45 @@
+---
+# Internal Users Configuration for OpenSearch Security
+# {{ ansible_managed }}
+
+_meta:
+  type: "internalusers"
+  config_version: 2
+
+# Admin user with full access
+admin:
+  hash: "{{ admin_hash.stdout | default('$2y$12$88IFVl6IfIwCFh5aQYfOmuXVL9j2hz/GusQb35o.4sdTDAEMTOD.K') }}"
+  reserved: true
+  backend_roles:
+    - "admin"
+  description: "Admin user"
+
+# Kibanaserver user for OpenSearch Dashboards
+kibanaserver:
+  hash: "{{ admin_hash.stdout | default('$2y$12$88IFVl6IfIwCFh5aQYfOmuXVL9j2hz/GusQb35o.4sdTDAEMTOD.K') }}"
+  reserved: true
+  description: "OpenSearch Dashboards user"
+
+# Read-only user for dashboards
+readall:
+  hash: "$2y$12$88IFVl6IfIwCFh5aQYfOmuXVL9j2hz/GusQb35o.4sdTDAEMTOD.K"
+  reserved: false
+  backend_roles:
+    - "readall"
+  description: "Read-only user"
+
+# Log shipper user (for Fluent Bit/Filebeat)
+logstash:
+  hash: "$2y$12$88IFVl6IfIwCFh5aQYfOmuXVL9j2hz/GusQb35o.4sdTDAEMTOD.K"
+  reserved: false
+  backend_roles:
+    - "logstash"
+  description: "Log shipper user"
+
+# Snapshotrestore user for backups
+snapshotrestore:
+  hash: "$2y$12$88IFVl6IfIwCFh5aQYfOmuXVL9j2hz/GusQb35o.4sdTDAEMTOD.K"
+  reserved: false
+  backend_roles:
+    - "snapshotrestore"
+  description: "Snapshot/Restore user"

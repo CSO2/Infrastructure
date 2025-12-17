@@ -1,0 +1,48 @@
+---
+# Roles Mapping Configuration for OpenSearch Security
+# {{ ansible_managed }}
+
+_meta:
+  type: "rolesmapping"
+  config_version: 2
+
+# Admin role mapping
+all_access:
+  reserved: false
+  backend_roles:
+    - "admin"
+  description: "Maps admin to all_access"
+
+# OpenSearch Dashboards access
+kibana_user:
+  reserved: false
+  backend_roles:
+    - "kibanauser"
+  description: "Maps kibanauser to kibana_user"
+
+# Read all indices
+readall:
+  reserved: false
+  backend_roles:
+    - "readall"
+  description: "Maps readall to read access"
+
+# Logstash/Log shipper access
+logstash:
+  reserved: false
+  backend_roles:
+    - "logstash"
+  description: "Maps logstash user for log shipping"
+
+# Snapshot restore access
+manage_snapshots:
+  reserved: false
+  backend_roles:
+    - "snapshotrestore"
+  description: "Maps snapshotrestore for backup operations"
+
+# OpenSearch Dashboards server role
+kibana_server:
+  reserved: true
+  users:
+    - "kibanaserver"

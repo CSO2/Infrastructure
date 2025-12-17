@@ -1,0 +1,187 @@
+---
+# OpenSearch Index Templates and ILM Policies
+
+- name: Wait for OpenSearch API to be available
+  uri:
+    url: "https://{{ ansible_host }}:{{ opensearch_http_port }}/_cluster/health"
+    method: GET
+    user: admin
+    password: "{{ opensearch_admin_password }}"
+    force_basic_auth: yes
+    validate_certs: no
+    status_code: 200
+  register: api_check
+  until: api_check.status == 200
+  retries: 30
+  delay: 5
+  run_once: true
+
+- name: Create ISM policy for log retention
+  uri:
+    url: "https://{{ ansible_host }}:{{ opensearch_http_port }}/_plugins/_ism/policies/log-retention-policy"
+    method: PUT
+    user: admin
+    password: "{{ opensearch_admin_password }}"
+    force_basic_auth: yes
+    validate_certs: no
+    body_format: json
+    body: |
+      {
+        "policy": {
+          "description": "Log retention policy for e-commerce application logs",
+          "default_state": "hot",
+          "states": [
+            {
+              "name": "hot",
+              "actions": [],
+              "transitions": [
+                {
+                  "state_name": "warm",
+                  "conditions": {
+                    "min_index_age": "7d"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "warm",
+              "actions": [
+                {
+                  "replica_count": {
+                    "number_of_replicas": 0
+                  }
+                }
+              ],
+              "transitions": [
+                {
+                  "state_name": "delete",
+                  "conditions": {
+                    "min_index_age": "{{ opensearch_log_retention_days }}d"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "delete",
+              "actions": [
+                {
+                  "delete": {}
+                }
+              ],
+              "transitions": []
+            }
+          ],
+          "ism_template": {
+            "index_patterns": ["logs-*", "ecommerce-*"],
+            "priority": 100
+          }
+        }
+      }
+    status_code: [200, 201]
+  run_once: true
+
+- name: Create index template for application logs
+  uri:
+    url: "https://{{ ansible_host }}:{{ opensearch_http_port }}/_index_template/ecommerce-logs-template"
+    method: PUT
+    user: admin
+    password: "{{ opensearch_admin_password }}"
+    force_basic_auth: yes
+    validate_certs: no
+    body_format: json
+    body: |
+      {
+        "index_patterns": ["ecommerce-*", "logs-*"],
+        "priority": 100,
+        "template": {
+          "settings": {
+            "number_of_shards": {{ opensearch_number_of_shards }},
+            "number_of_replicas": {{ opensearch_number_of_replicas }},
+            "index.refresh_interval": "5s"
+          },
+          "mappings": {
+            "properties": {
+              "@timestamp": { "type": "date" },
+              "service": { "type": "keyword" },
+              "level": { "type": "keyword" },
+              "message": { "type": "text" },
+              "correlation_id": { "type": "keyword" },
+              "user_id": { "type": "keyword" },
+              "request_id": { "type": "keyword" },
+              "http_method": { "type": "keyword" },
+              "http_path": { "type": "keyword" },
+              "http_status": { "type": "integer" },
+              "response_time_ms": { "type": "float" },
+              "error_type": { "type": "keyword" },
+              "error_message": { "type": "text" },
+              "stack_trace": { "type": "text" },
+              "kubernetes": {
+                "type": "object",
+                "properties": {
+                  "namespace": { "type": "keyword" },
+                  "pod_name": { "type": "keyword" },
+                  "container_name": { "type": "keyword" },
+                  "node_name": { "type": "keyword" }
+                }
+              }
+            }
+          }
+        }
+      }
+    status_code: [200]
+  run_once: true
+
+- name: Create index template for metrics
+  uri:
+    url: "https://{{ ansible_host }}:{{ opensearch_http_port }}/_index_template/metrics-template"
+    method: PUT
+    user: admin
+    password: "{{ opensearch_admin_password }}"
+    force_basic_auth: yes
+    validate_certs: no
+    body_format: json
+    body: |
+      {
+        "index_patterns": ["metrics-*"],
+        "priority": 100,
+        "template": {
+          "settings": {
+            "number_of_shards": 1,
+            "number_of_replicas": 1
+          },
+          "mappings": {
+            "properties": {
+              "@timestamp": { "type": "date" },
+              "service": { "type": "keyword" },
+              "metric_name": { "type": "keyword" },
+              "metric_value": { "type": "float" },
+              "tags": { "type": "object" }
+            }
+          }
+        }
+      }
+    status_code: [200]
+  run_once: true
+
+- name: Create initial indices
+  uri:
+    url: "https://{{ ansible_host }}:{{ opensearch_http_port }}/{{ item }}"
+    method: PUT
+    user: admin
+    password: "{{ opensearch_admin_password }}"
+    force_basic_auth: yes
+    validate_certs: no
+    body_format: json
+    body: |
+      {
+        "settings": {
+          "number_of_shards": {{ opensearch_number_of_shards }},
+          "number_of_replicas": {{ opensearch_number_of_replicas }}
+        }
+      }
+    status_code: [200, 400]
+  loop:
+    - "ecommerce-logs-{{ ansible_date_time.date }}"
+    - "ecommerce-audit-{{ ansible_date_time.date }}"
+  run_once: true
+  ignore_errors: yes

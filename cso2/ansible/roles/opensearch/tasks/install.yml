@@ -1,0 +1,101 @@
+---
+# OpenSearch Installation Tasks
+
+- name: Install required packages
+  apt:
+    name:
+      - openjdk-11-jdk
+      - curl
+      - wget
+      - unzip
+      - apt-transport-https
+      - gnupg2
+    state: present
+    update_cache: yes
+
+- name: Set JAVA_HOME environment variable
+  lineinfile:
+    path: /etc/environment
+    line: 'JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64"'
+    state: present
+
+- name: Create opensearch group
+  group:
+    name: "{{ opensearch_group }}"
+    state: present
+
+- name: Create opensearch user
+  user:
+    name: "{{ opensearch_user }}"
+    group: "{{ opensearch_group }}"
+    shell: /bin/bash
+    home: "{{ opensearch_home }}"
+    system: yes
+    create_home: no
+
+- name: Create OpenSearch directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ opensearch_user }}"
+    group: "{{ opensearch_group }}"
+    mode: '0755'
+  loop:
+    - "{{ opensearch_home }}"
+    - "{{ opensearch_data_dir }}"
+    - "{{ opensearch_log_dir }}"
+    - "/opt/opensearch-dashboards"
+
+- name: Download OpenSearch
+  get_url:
+    url: "{{ opensearch_download_url }}"
+    dest: "/tmp/opensearch-{{ opensearch_version }}.tar.gz"
+    mode: '0644'
+  register: opensearch_download
+
+- name: Extract OpenSearch
+  unarchive:
+    src: "/tmp/opensearch-{{ opensearch_version }}.tar.gz"
+    dest: "{{ opensearch_home }}"
+    remote_src: yes
+    owner: "{{ opensearch_user }}"
+    group: "{{ opensearch_group }}"
+    extra_opts: [--strip-components=1]
+  when: opensearch_download.changed
+
+- name: Set kernel parameters for OpenSearch
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_set: yes
+    state: present
+    reload: yes
+  loop:
+    - { name: 'vm.max_map_count', value: '262144' }
+    - { name: 'fs.file-max', value: '65536' }
+
+- name: Configure system limits for opensearch user
+  pam_limits:
+    domain: "{{ opensearch_user }}"
+    limit_type: "{{ item.limit_type }}"
+    limit_item: "{{ item.limit_item }}"
+    value: "{{ item.value }}"
+  loop:
+    - { limit_type: 'soft', limit_item: 'nofile', value: '65536' }
+    - { limit_type: 'hard', limit_item: 'nofile', value: '65536' }
+    - { limit_type: 'soft', limit_item: 'nproc', value: '4096' }
+    - { limit_type: 'hard', limit_item: 'nproc', value: '4096' }
+    - { limit_type: 'soft', limit_item: 'memlock', value: 'unlimited' }
+    - { limit_type: 'hard', limit_item: 'memlock', value: 'unlimited' }
+
+- name: Set ownership of OpenSearch directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ opensearch_user }}"
+    group: "{{ opensearch_group }}"
+    recurse: yes
+  loop:
+    - "{{ opensearch_home }}"
+    - "{{ opensearch_data_dir }}"
+    - "{{ opensearch_log_dir }}"

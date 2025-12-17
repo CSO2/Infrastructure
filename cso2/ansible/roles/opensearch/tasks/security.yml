@@ -1,0 +1,50 @@
+---
+# OpenSearch Security Configuration Tasks
+
+- name: Create internal users configuration
+  template:
+    src: internal_users.yml.j2
+    dest: "{{ opensearch_home }}/config/opensearch-security/internal_users.yml"
+    owner: "{{ opensearch_user }}"
+    group: "{{ opensearch_group }}"
+    mode: '0640'
+
+- name: Create roles mapping configuration
+  template:
+    src: roles_mapping.yml.j2
+    dest: "{{ opensearch_home }}/config/opensearch-security/roles_mapping.yml"
+    owner: "{{ opensearch_user }}"
+    group: "{{ opensearch_group }}"
+    mode: '0640'
+
+- name: Generate admin certificate hash
+  shell: |
+    cd {{ opensearch_home }}/plugins/opensearch-security/tools/
+    JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64 bash hash.sh -p "{{ opensearch_admin_password }}"
+  register: admin_hash
+  changed_when: false
+  run_once: true
+
+- name: Initialize security plugin (only on first node)
+  shell: |
+    cd {{ opensearch_home }}/plugins/opensearch-security/tools/
+    JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64 bash securityadmin.sh \
+      -cd {{ opensearch_home }}/config/opensearch-security/ \
+      -icl -nhnv \
+      -cacert {{ opensearch_home }}/config/root-ca.pem \
+      -cert {{ opensearch_home }}/config/admin.pem \
+      -key {{ opensearch_home }}/config/admin-key.pem
+  run_once: true
+  when: opensearch_security_enabled
+  ignore_errors: yes
+
+- name: Configure firewall for OpenSearch
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - "{{ opensearch_http_port }}"
+    - "{{ opensearch_transport_port }}"
+    - "{{ opensearch_dashboards_port }}"
+  when: ansible_facts['os_family'] == 'Debian'

@@ -1,0 +1,33 @@
+[Unit]
+Description=OpenSearch Dashboards
+Documentation=https://opensearch.org/docs/latest/dashboards
+Wants=network-online.target
+After=network-online.target opensearch.service
+
+[Service]
+Type=simple
+RuntimeDirectory=opensearch-dashboards
+
+User={{ opensearch_user }}
+Group={{ opensearch_group }}
+
+WorkingDirectory={{ opensearch_dashboards_home }}
+
+ExecStart={{ opensearch_dashboards_home }}/bin/opensearch-dashboards
+
+StandardOutput=journal
+StandardError=inherit
+
+LimitNOFILE=65536
+TimeoutStopSec=0
+KillSignal=SIGTERM
+KillMode=process
+SendSIGKILL=no
+SuccessExitStatus=143
+TimeoutStartSec=180
+
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

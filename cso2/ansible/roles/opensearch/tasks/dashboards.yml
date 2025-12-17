@@ -1,0 +1,68 @@
+---
+# OpenSearch Dashboards Installation and Configuration
+
+- name: Download OpenSearch Dashboards
+  get_url:
+    url: "{{ opensearch_dashboards_download_url }}"
+    dest: "/tmp/opensearch-dashboards-{{ opensearch_dashboards_version }}.tar.gz"
+    mode: '0644'
+  register: dashboards_download
+  run_once: true
+  delegate_to: "{{ groups['opensearch'][0] }}"
+
+- name: Extract OpenSearch Dashboards
+  unarchive:
+    src: "/tmp/opensearch-dashboards-{{ opensearch_dashboards_version }}.tar.gz"
+    dest: "{{ opensearch_dashboards_home }}"
+    remote_src: yes
+    owner: "{{ opensearch_user }}"
+    group: "{{ opensearch_group }}"
+    extra_opts: [--strip-components=1]
+  when: dashboards_download.changed
+  run_once: true
+  delegate_to: "{{ groups['opensearch'][0] }}"
+
+- name: Create OpenSearch Dashboards configuration
+  template:
+    src: opensearch_dashboards.yml.j2
+    dest: "{{ opensearch_dashboards_home }}/config/opensearch_dashboards.yml"
+    owner: "{{ opensearch_user }}"
+    group: "{{ opensearch_group }}"
+    mode: '0640'
+  run_once: true
+  delegate_to: "{{ groups['opensearch'][0] }}"
+  notify: restart opensearch-dashboards
+
+- name: Create OpenSearch Dashboards systemd service
+  template:
+    src: opensearch-dashboards.service.j2
+    dest: /etc/systemd/system/opensearch-dashboards.service
+    mode: '0644'
+  run_once: true
+  delegate_to: "{{ groups['opensearch'][0] }}"
+  notify:
+    - reload systemd
+    - restart opensearch-dashboards
+
+- name: Reload systemd for dashboards
+  systemd:
+    daemon_reload: yes
+  run_once: true
+  delegate_to: "{{ groups['opensearch'][0] }}"
+
+- name: Enable and start OpenSearch Dashboards
+  systemd:
+    name: opensearch-dashboards
+    enabled: yes
+    state: started
+  run_once: true
+  delegate_to: "{{ groups['opensearch'][0] }}"
+
+- name: Wait for OpenSearch Dashboards to start
+  wait_for:
+    host: "{{ hostvars[groups['opensearch'][0]]['ansible_host'] }}"
+    port: "{{ opensearch_dashboards_port }}"
+    delay: 10
+    timeout: 120
+    state: started
+  run_once: true

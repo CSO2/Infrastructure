@@ -1,0 +1,69 @@
+# ======================== OpenSearch Configuration =========================
+#
+# Cluster name: {{ opensearch_cluster_name }}
+# Node name: {{ opensearch_node_name }}
+#
+
+cluster.name: {{ opensearch_cluster_name }}
+node.name: {{ opensearch_node_name }}
+
+# ---------------------------------- Paths ------------------------------------
+path.data: {{ opensearch_data_dir }}
+path.logs: {{ opensearch_log_dir }}
+
+# ---------------------------------- Network ----------------------------------
+network.host: {{ opensearch_network_host }}
+http.port: {{ opensearch_http_port }}
+transport.port: {{ opensearch_transport_port }}
+
+# --------------------------------- Discovery ---------------------------------
+{% if groups['opensearch'] | length > 1 %}
+discovery.seed_hosts:
+{% for host in groups['opensearch'] %}
+  - {{ hostvars[host]['ansible_host'] }}:{{ opensearch_transport_port }}
+{% endfor %}
+
+cluster.initial_master_nodes:
+{% for host in groups['opensearch'] %}
+  - {{ host }}
+{% endfor %}
+{% else %}
+discovery.type: single-node
+{% endif %}
+
+# ---------------------------------- Security ---------------------------------
+{% if opensearch_security_enabled %}
+plugins.security.ssl.transport.pemcert_filepath: node.pem
+plugins.security.ssl.transport.pemkey_filepath: node-key.pem
+plugins.security.ssl.transport.pemtrustedcas_filepath: root-ca.pem
+plugins.security.ssl.transport.enforce_hostname_verification: false
+plugins.security.ssl.http.enabled: true
+plugins.security.ssl.http.pemcert_filepath: node.pem
+plugins.security.ssl.http.pemkey_filepath: node-key.pem
+plugins.security.ssl.http.pemtrustedcas_filepath: root-ca.pem
+plugins.security.allow_unsafe_democertificates: true
+plugins.security.allow_default_init_securityindex: true
+plugins.security.authcz.admin_dn:
+  - CN=admin,OU=DevOps,O=CSO2,L=City,ST=State,C=US
+plugins.security.nodes_dn:
+  - CN=node,OU=DevOps,O=CSO2,L=City,ST=State,C=US
+plugins.security.audit.type: internal_opensearch
+plugins.security.enable_snapshot_restore_privilege: true
+plugins.security.check_snapshot_restore_write_privileges: true
+plugins.security.restapi.roles_enabled: ["all_access", "security_rest_api_access"]
+{% else %}
+plugins.security.disabled: true
+{% endif %}
+
+# ---------------------------------- Various ----------------------------------
+action.destructive_requires_name: true
+compatibility.override_main_response_version: true
+
+# ---------------------------------- Indices ----------------------------------
+cluster.max_shards_per_node: 1000
+
+# ---------------------------------- Monitoring -------------------------------
+cluster.routing.allocation.disk.threshold_enabled: true
+cluster.routing.allocation.disk.watermark.low: 85%
+cluster.routing.allocation.disk.watermark.high: 90%
+cluster.routing.allocation.disk.watermark.flood_stage: 95%

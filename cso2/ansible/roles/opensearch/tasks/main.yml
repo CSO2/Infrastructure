@@ -1,0 +1,34 @@
+---
+# OpenSearch Ansible Role - Main Tasks
+# Deploys a 3-node OpenSearch cluster for centralized logging
+
+- name: Include installation tasks
+  include_tasks: install.yml
+  tags:
+    - opensearch
+    - install
+
+- name: Include configuration tasks
+  include_tasks: configure.yml
+  tags:
+    - opensearch
+    - configure
+
+- name: Include security tasks
+  include_tasks: security.yml
+  when: opensearch_security_enabled
+  tags:
+    - opensearch
+    - security
+
+- name: Include dashboards tasks
+  include_tasks: dashboards.yml
+  tags:
+    - opensearch
+    - dashboards
+
+- name: Include index template tasks
+  include_tasks: index_templates.yml
+  tags:
+    - opensearch
+    - templates

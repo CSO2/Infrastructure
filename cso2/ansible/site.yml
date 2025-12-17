@@ -13,3 +13,13 @@
   become: yes
   roles:
     - worker
+
+# OpenSearch Cluster Deployment
+# Run separately with: ansible-playbook -i inventory/opensearch_hosts.yml opensearch.yml
+- hosts: opensearch
+  become: yes
+  roles:
+    - opensearch
+  tags:
+    - opensearch
+    - logging
