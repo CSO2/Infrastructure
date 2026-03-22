@@ -1,0 +1,54 @@
+# Vault Agent ConfigMap used by service init containers to fetch secrets
+# Each service references this to pull its secrets before the main container starts
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-agent-config
+data:
+  # PostgreSQL services config
+  postgresql-services.hcl: |
+    vault {
+      address = "http://vault:8200"
+    }
+    auto_auth {
+      method "token" {
+        config = {
+          token = "root"
+        }
+      }
+    }
+    template {
+      contents = <<EOT
+        {{- with secret "secret/data/cso2/postgresql" -}}
+        POSTGRES_USER={{ .Data.data.POSTGRES_USER }}
+        POSTGRES_PASSWORD={{ .Data.data.POSTGRES_PASSWORD }}
+        CSO2_USER={{ .Data.data.CSO2_USER }}
+        CSO2_PASSWORD={{ .Data.data.CSO2_PASSWORD }}
+        {{- end }}
+      EOT
+      destination = "/vault/secrets/postgresql.env"
+    }
+    exit_after_auth = true
+
+  # MongoDB services config
+  mongodb-services.hcl: |
+    vault {
+      address = "http://vault:8200"
+    }
+    auto_auth {
+      method "token" {
+        config = {
+          token = "root"
+        }
+      }
+    }
+    template {
+      contents = <<EOT
+        {{- with secret "secret/data/cso2/mongodb" -}}
+        MONGO_INITDB_ROOT_USERNAME={{ .Data.data.MONGO_INITDB_ROOT_USERNAME }}
+        MONGO_INITDB_ROOT_PASSWORD={{ .Data.data.MONGO_INITDB_ROOT_PASSWORD }}
+        {{- end }}
+      EOT
+      destination = "/vault/secrets/mongodb.env"
+    }
+    exit_after_auth = true

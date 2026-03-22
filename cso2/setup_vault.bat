@@ -10,7 +10,7 @@ echo.
 :: --- 1. PRE-FLIGHT CHECK ---
 if not exist "docker-compose.yml" (
     echo [ERROR] docker-compose.yml not found!
-    echo Please run this script from the 'Infrastructure/cso2' folder.
+    echo Please ensure this file is in the same folder as docker-compose.yml.
     pause
     exit /b
 )
@@ -50,17 +50,11 @@ set "SECRETS=!SECRETS! product_mongodb_uri=mongodb://localhost:27017/CSO2_produc
 set "SECRETS=!SECRETS! content_mongodb_uri=mongodb://localhost:27017/CSO2_content_service"
 set "SECRETS=!SECRETS! notifications_mongodb_uri=mongodb://localhost:27017/CSO2_notifications_service"
 
-:: D. Notification Credentials (PLACEHOLDERS for Safety)
-:: Team members can replace these locally if they need to test email
+:: D. Notification Credentials (PLACEHOLDERS)
+:: NOTE: If you need to test email sending locally, open this file 
+:: and replace these two values with your real Gmail App Password.
 set "SECRETS=!SECRETS! mail_username=user@example.com"
 set "SECRETS=!SECRETS! mail_password=change_me_locally"
-
-:: E. JWT RSA Keys (Test Keys for Dev)
-set "JWT_PVT=-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDL+Q+...\n-----END PRIVATE KEY-----"
-set "JWT_PUB=-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAy/kP...\n-----END PUBLIC KEY-----"
-
-set "SECRETS=!SECRETS! jwt_private_key=!JWT_PVT!"
-set "SECRETS=!SECRETS! jwt_public_key=!JWT_PUB!"
 
 :: --- 5. INJECT SECRETS ---
 echo.
