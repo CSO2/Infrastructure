@@ -13,6 +13,30 @@ spec:
         app: mongodb
         type: backend-infra
     spec:
+      initContainers:
+      - name: vault-secret-fetcher
+        image: hashicorp/vault:1.17
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Fetching MongoDB secrets from Vault..."
+          until vault status -address=http://vault:8200 > /dev/null 2>&1; do
+            echo "Waiting for Vault..."
+            sleep 3
+          done
+          export VAULT_ADDR=http://vault:8200
+          export VAULT_TOKEN=root
+          MONGO_USER=$(vault kv get -mount=secret -field=MONGO_INITDB_ROOT_USERNAME cso2/mongodb)
+          MONGO_PASS=$(vault kv get -mount=secret -field=MONGO_INITDB_ROOT_PASSWORD cso2/mongodb)
+          echo "MONGO_INITDB_ROOT_USERNAME=$MONGO_USER" > /vault/secrets/db.env
+          echo "MONGO_INITDB_ROOT_PASSWORD=$MONGO_PASS" >> /vault/secrets/db.env
+          echo "Secrets written successfully"
+          cat /vault/secrets/db.env
+        volumeMounts:
+        - name: vault-secrets
+          mountPath: /vault/secrets
       containers:
       - name: mongodb
         image: mongo:7.0
@@ -33,6 +57,9 @@ spec:
         volumeMounts:
         - name: mongodb-data
           mountPath: /data/db
+        - name: vault-secrets
+          mountPath: /vault/secrets
+          readOnly: true
         resources:
           requests:
             memory: "512Mi"
@@ -44,3 +71,5 @@ spec:
       - name: mongodb-data
         persistentVolumeClaim:
           claimName: mongodb-pvc
+      - name: vault-secrets
+        emptyDir: {}

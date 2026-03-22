@@ -3,6 +3,7 @@ kind: Kustomization
 
 # Bases are the same, through patches we add the things needed for prod
 resources:
+- ../../base/infrastructure/vault
 - ../../base/infrastructure/mongodb
 - ../../base/infrastructure/postgresql
 - ../../base/infrastructure/redis
@@ -19,6 +20,7 @@ resources:
 - ../../base/services/notifications-service
 - ../../base/services/reporting-and-analysis-service
 - istio
+
 images:
 - name: cso2/ai-service
   newName: ghcr.io/cso2/ai_service
