@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  # --- 1. PostgreSQL (Relational DB) ---
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: cso2
+      POSTGRES_PASSWORD: password123
+      # Removed POSTGRES_DB to allow manual DB creation if needed
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # --- 2. MongoDB (NoSQL DB) ---
+  mongo:
+    image: mongo:6.0
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  # --- 3. Redis (Cache) ---
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  # --- 4. RabbitMQ (Message Queue) ---
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  # --- 5. HashiCorp Vault (Security) ---
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: vault
+    ports:
+      - "8200:8200"
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: my-root-token
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+
+  # --- 6. Vault CLI (Helper) ---
+  cli-vault:
+    image: hashicorp/vault:1.15
+    container_name: cli-vault
+    entrypoint: sh
+    tty: true
+    depends_on:
+      - vault
+    environment:
+      VAULT_ADDR: http://vault:8200
+
+volumes:
+  postgres_data:
+  mongo_data:

@@ -2,6 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
+- ../../base/infrastructure/vault
 - ../../base/infrastructure/mongodb
 - ../../base/infrastructure/postgresql
 - ../../base/infrastructure/redis
@@ -32,6 +33,8 @@ configMapGenerator:
   - RABBITMQ_HOST=rabbitmq
   - RABBITMQ_PORT=5672
   - DATABASE_USERNAME=cso2
+  - VAULT_ADDR=http://vault:8200
+  - VAULT_TOKEN=root
   name: app-config
 - literals:
   - SERVER_PORT=8081
@@ -39,9 +42,11 @@ configMapGenerator:
   - DATABASE_USERNAME=cso2
   - JWT_EXPIRATION="86400000"
   - JWT_REFRESH_EXPIRATION="604800000"
+  - VAULT_ADDR=http://vault:8200
   name: user-identity-service-config
 - literals:
   - SERVER_PORT=8082
+  - VAULT_ADDR=http://vault:8200
   name: product-catalogue-service-config
 - literals:
   - SERVER_PORT=8083
@@ -49,22 +54,26 @@ configMapGenerator:
   - JPA_SHOW_SQL=false
   - CATALOG_SERVICE_URL=http://product-catalogue-service:8082
   - CART_SERVICE_URL=http://shoppingcart-wishlist-service:8084
+  - VAULT_ADDR=http://vault:8200
   name: order-service-config
 - literals:
   - SERVER_PORT=8084
   - REDIS_HOST=redis
   - REDIS_PORT=6379
   - CATALOG_SERVICE_URL=http://product-catalogue-service:8082
+  - VAULT_ADDR=http://vault:8200
   name: shoppingcart-wishlist-service-config
 - literals:
   - SERVER_PORT=8085
   - DATABASE_URL=jdbc:postgresql://postgresql:5432/cso2_support_service
   - ORDER_SERVICE_URL=http://order-service:8083
+  - VAULT_ADDR=http://vault:8200
   name: support-service-config
 - behavior: create
   literals:
   - SERVER_PORT=8086
   - MONGODB_DATABASE=CSO2_content_service
+  - VAULT_ADDR=http://vault:8200
   name: content-service-config
 - behavior: create
   literals:
@@ -74,17 +83,22 @@ configMapGenerator:
   - KAFKA_CONSUMER_AUTO_OFFSET_RESET=earliest
   - MAIL_HOST=smtp.gmail.com
   - MAIL_PORT=587
+  - VAULT_ADDR=http://vault:8200
   name: notifications-service-config
 - behavior: create
   literals:
   - SERVER_PORT=8088
   - DATABASE_URL=jdbc:postgresql://postgresql:5432/cso2_reporting_service
+  - VAULT_ADDR=http://vault:8200
   name: reporting-and-analysis-service-config
 
 secretGenerator:
 - envs:
   - .env.redis
   name: redis-secrets
+# NOTE: postgresql-secrets and mongodb-secrets are now seeded FROM Vault via vault-init.sh
+# These .env files should contain ONLY non-sensitive bootstrap values.
+# The actual passwords live in Vault at secret/cso2/postgresql and secret/cso2/mongodb
 - envs:
   - .env.postgresql
   name: postgresql-secrets
@@ -204,6 +218,7 @@ patches:
   target:
     kind: Deployment
     labelSelector: type=frontend
+
 images:
 - name: cso2/ai-service
   newName: ghcr.io/cso2/ai_service

@@ -21,5 +21,5 @@ spec:
     matchLabels:
       app: user-identity-service
   portLevelMtls:
-    8081:
+    "8081":
       mode: PERMISSIVE

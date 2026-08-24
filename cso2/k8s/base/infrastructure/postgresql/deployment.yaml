@@ -13,6 +13,33 @@ spec:
         app: postgresql
         type: backend-infra
     spec:
+      initContainers:
+      - name: vault-secret-fetcher
+        image: hashicorp/vault:1.17
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Fetching PostgreSQL secrets from Vault..."
+          until vault status -address=http://vault:8200 > /dev/null 2>&1; do
+            echo "Waiting for Vault..."
+            sleep 3
+          done
+          export VAULT_ADDR=http://vault:8200
+          export VAULT_TOKEN=root
+          POSTGRES_USER=$(vault kv get -field=POSTGRES_USER secret/cso2/postgresql)
+          POSTGRES_PASSWORD=$(vault kv get -field=POSTGRES_PASSWORD secret/cso2/postgresql)
+          CSO2_USER=$(vault kv get -field=CSO2_USER secret/cso2/postgresql)
+          CSO2_PASSWORD=$(vault kv get -field=CSO2_PASSWORD secret/cso2/postgresql)
+          echo "POSTGRES_USER=$POSTGRES_USER" > /vault/secrets/db.env
+          echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> /vault/secrets/db.env
+          echo "CSO2_USER=$CSO2_USER" >> /vault/secrets/db.env
+          echo "CSO2_PASSWORD=$CSO2_PASSWORD" >> /vault/secrets/db.env
+          echo "Secrets written successfully"
+        volumeMounts:
+        - name: vault-secrets
+          mountPath: /vault/secrets
       containers:
       - name: postgresql
         image: postgres:16
@@ -53,29 +80,27 @@ spec:
               - -c
               - |
                 set -e
-
                 export PGPASSWORD="$POSTGRES_PASSWORD"
-
                 until pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do
                   sleep 1
                 done
-
                 user_exists=$(psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT 1 FROM pg_roles WHERE rolname = '$CSO2_USER'")
                 if [ "$user_exists" != "1" ]; then
                   psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "CREATE ROLE \"$CSO2_USER\" LOGIN PASSWORD '$CSO2_PASSWORD';"
                 fi
-
                 for db in cso2_order_service cso2_user_identity cso2_support_service cso2_reporting_service; do
                   db_exists=$(psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT 1 FROM pg_database WHERE datname = '$db'")
                   if [ "$db_exists" != "1" ]; then
                     psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "CREATE DATABASE \"$db\" OWNER \"$CSO2_USER\";"
                   fi
                 done
-
                 exit 0
         volumeMounts:
         - name: postgresql-data
           mountPath: /var/lib/postgresql/data
+        - name: vault-secrets
+          mountPath: /vault/secrets
+          readOnly: true
         resources:
           requests:
             memory: "512Mi"
@@ -87,3 +112,5 @@ spec:
       - name: postgresql-data
         persistentVolumeClaim:
           claimName: postgresql-pvc
+      - name: vault-secrets
+        emptyDir: {}
