@@ -115,6 +115,9 @@ secretGenerator:
 - envs:
   - .env.reporting-and-analysis-service
   name: reporting-and-analysis-service-secrets
+- envs:
+  - .env.ai-service
+  name: ai-service-secrets
 
 patches:
 - patch: |-
@@ -213,7 +216,7 @@ images:
   newTag: dev-048bbf5
 - name: cso2/frontend
   newName: cso2/frontend
-  newTag: dev-3af9bdd
+  newTag: dev-local
 - name: cso2/notifications-service
   newName: ghcr.io/cso2/notifications_service
   newTag: dev-cb4625f

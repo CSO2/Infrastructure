@@ -58,7 +58,7 @@ install_prerequisites() {
 # Start Minikube
 start_minikube() {
   echo "Starting Minikube..."
-  minikube start --driver=docker --cpus=12 --memory=7096
+  minikube start --driver=docker --cpus=12 --memory=4096
 }
 
 # Verify Minikube setup
@@ -170,7 +170,7 @@ main() {
   echo "========================================="
   echo ""
   
-  install_prerequisites
+  # install_prerequisites
   start_minikube
   verify_minikube
   install_istio

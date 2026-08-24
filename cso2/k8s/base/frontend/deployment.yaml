@@ -21,7 +21,7 @@ spec:
         - containerPort: 3000
         env:
         - name: NEXT_PUBLIC_API_URL
-          value: "http://user-identity-service:8081"
+          value: "http://istio-ingress.istio-ingress.svc.cluster.local"
         - name: NEXT_PUBLIC_PRODUCT_SERVICE_URL
           value: "http://product-catalogue-service:8082"
         - name: NEXT_PUBLIC_ORDER_SERVICE_URL

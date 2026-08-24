@@ -8,6 +8,13 @@ spec:
     matchLabels:
       app: user-identity-service
   rules:
+  # Public JWKS endpoint (fetched plaintext by the ingress gateway's jwt_authn)
+  # and health probes carry no mTLS principal; allow them by path.
+  - to:
+    - operation:
+        paths:
+        - /.well-known/*
+        - /actuator/health*
   - from:
     - source:
         principals:

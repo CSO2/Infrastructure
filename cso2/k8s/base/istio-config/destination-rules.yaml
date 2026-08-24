@@ -9,6 +9,19 @@ spec:
     tls:
       mode: ISTIO_MUTUAL
 ---
+# Applies to the ingress gateway (client ns: istio-ingress) so Envoy's JWKS
+# fetch of jwksUri uses mTLS — required by PeerAuthentication STRICT in cso2-dev.
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: user-identity-service-mtls-ingress
+  namespace: istio-ingress
+spec:
+  host: user-identity-service.cso2-dev.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+---
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:

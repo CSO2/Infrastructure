@@ -22,6 +22,8 @@ spec:
         envFrom:
         - configMapRef:
             name: app-config
+        - configMapRef:
+            name: shoppingcart-wishlist-service-config
         - secretRef:
             name: shoppingcart-wishlist-service-secrets
         # resources:

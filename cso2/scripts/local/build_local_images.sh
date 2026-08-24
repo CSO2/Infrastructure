@@ -31,7 +31,9 @@ for service_dir in */; do
         GIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
         popd >/dev/null
         
-        IMAGE_NAME="cso2/${service_name}"
+        # Image refs must be all lowercase (directories like AI-service break this)
+        service_name_lower="${service_name,,}"
+        IMAGE_NAME="cso2/${service_name_lower}"
         IMAGE_TAG="dev-${GIT_SHA}"
         IMAGE_TAGS["$IMAGE_NAME"]="$IMAGE_TAG"
         (

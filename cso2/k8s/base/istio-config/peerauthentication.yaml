@@ -6,3 +6,20 @@ metadata:
 spec:
   mtls:
     mode: STRICT
+---
+# The ingress gateway (bare istio-proxy, no sidecar) fetches the JWKS endpoint
+# used by RequestAuthentication over plaintext HTTP; its jwt_authn fetch does
+# not use the mTLS route clusters. Allow plaintext on this one port so token
+# verification works; in-mesh callers still use mTLS via DestinationRules.
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: user-identity-jwks-permissive
+  namespace: cso2-dev
+spec:
+  selector:
+    matchLabels:
+      app: user-identity-service
+  portLevelMtls:
+    8081:
+      mode: PERMISSIVE
